@@ -10,7 +10,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "ResetCore"),
-        .executableTarget(name: "ResetApp", dependencies: ["ResetCore"], exclude: ["Resources"]),
+        .executableTarget(name: "ResetApp", dependencies: ["ResetCore"]),
         .testTarget(name: "ResetCoreTests", dependencies: ["ResetCore"]),
     ]
 )

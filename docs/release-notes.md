@@ -1,10 +1,5 @@
-# Codex Jet 0.12.0
+# Codex Jet 0.13.1
 
-This release includes:
+This release replaces the illustrated roadster with an original real-time 3D mesh. Vehicle altitude still follows the observed remaining quota, while motion speed follows measured recent usage. The stationary quota tank and its reading are unchanged.
 
-- A menu-bar quota summary with a countdown to the nearest eligible reset target.
-- A quota-driven flight visualization whose altitude follows observed remaining quota and whose motion follows measured recent usage.
-- Local account history, token activity summaries, reset reminders, and optional banked-reset planning.
-- An independent global reset radar, kept separate from account quota readings.
-
-The public project uses the Codex Jet name and original unbranded roadster artwork. The app retains its existing local data location so an existing Codex Reset installation can continue using its history and settings.
+The app retains its existing local data location so an existing Codex Jet or Codex Reset installation can continue using its history and settings.

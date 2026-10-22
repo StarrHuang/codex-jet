@@ -32,7 +32,7 @@ See [deployment](docs/deployment.md) for updates and release packaging. See [ver
 - Local token activity by model and hour, based on Codex session usage records.
 - Optional banked-reset cards read from the current local account, with identity checks and manual-redemption scenarios.
 - An optional public global reset radar with third-party source, confidence, and update time shown separately from personal quota.
-- Reset reminders and a flight visualization driven by observed quota and pace.
+- Reset reminders and a real-time 3D flight visualization driven by observed quota and pace.
 
 ## Data boundaries
 
@@ -48,4 +48,4 @@ The global radar is fetched separately from `codex-reset.com`; those requests do
 - The compact weekly quota-card presentation was inspired by the Tokei app. No Tokei source code or artwork is included.
 - [CodexBar](https://github.com/steipete/CodexBar) informed the window-pace comparison and is cited as a source of product and implementation ideas. Codex Jet's implementation is independent.
 
-The included fictional roadster artwork was generated for this project and contains no manufacturer marks. The release does not include third-party video or product imagery.
+The fictional roadster is rendered from original procedural 3D geometry created for this project and contains no manufacturer marks. The release does not include third-party vehicle imagery.

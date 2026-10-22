@@ -12,6 +12,7 @@ struct RoadsterFlightView: View {
 
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.scenePhase) private var scenePhase
+    @StateObject private var renderer = Roadster3DRenderer()
     @State private var transition: FlightTransition?
     @State private var transitionTask: Task<Void, Never>?
     @State private var travelOrigin = Date()
@@ -27,7 +28,7 @@ struct RoadsterFlightView: View {
     private var running: Bool { motionAllowed && hasPositiveBalance && (flight.travelSpeed > 0 || transition != nil) }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !running)) { timeline in
+        TimelineView(.animation(minimumInterval: 1.0 / 24.0, paused: !running)) { timeline in
             let distance = motionAllowed ? traveled + timeline.date.timeIntervalSince(travelOrigin) * flight.travelSpeed : 0
             let phase = distance * 2 * .pi
             let sample = flightSample(at: timeline.date)
@@ -119,23 +120,24 @@ struct RoadsterFlightView: View {
         let displayFraction = liftFraction ?? 0.52
         // Cruise has no vertical bob: height stays readable independently of speed.
         let lift = CGFloat(displayFraction) * maxLift
-        let carBottom = groundY - lift
         let speed = animating ? flight.travelSpeed : 0
-        let pitch = launch?.rotationDegrees ?? (speed > 0 ? sin(phase * 0.22) * 3.5 * min(1, displayFraction * 5) : 0)
-        let shift = speed > 0 ? -width * 0.028 * speed + sin(phase * 0.17) * width * 0.008 : 0
         drawHangar(in: &context, width: width, height: height, groundY: groundY, announced: announced)
         if speed > 0 { drawVelocityField(in: &context, size: size, phase: phase, speed: speed, groundY: groundY) }
-        drawGroundShadow(in: &context, width: width, groundY: groundY, lift: lift, maxLift: maxLift)
+        drawGroundShadow(in: &context, width: width, groundY: height * 0.89, lift: lift, maxLift: maxLift)
 
         // The stationary capacity bottle deliberately retains its original design.
         drawTank(in: &context, width: width, groundY: groundY, compact: compact,
                  remaining: flight.remainingPercent)
-        let car = drawRoadster(in: &context, width: width, height: height, bottom: carBottom,
-            compact: compact, pitch: pitch, scale: launch?.scale ?? 1, shift: shift,
-            phase: phase, thrust: max(speed * 0.65, launch?.thrust ?? 0), groundY: groundY)
+        let rendered = renderer.frame(size: CGSize(width: width * 0.755, height: height),
+            lift: displayFraction, speed: speed, phase: phase, launch: launch)
+        var scene = context
+        scene.clip(to: Path(CGRect(x: 0, y: 0, width: width * 0.755, height: height)))
+        scene.draw(Image(decorative: rendered.image, scale: 2),
+                   in: CGRect(x: 0, y: 0, width: width * 0.755, height: height))
+        let car = rendered.carBounds
         if quota == nil { drawServiceCradle(in: &context, car: car, groundY: groundY) }
         if flight.remainingPercent == 0 {
-            drawLabel("PAD", at: CGPoint(x: car.midX, y: groundY + (compact ? 5 : 8)),
+            drawLabel("PAD", at: CGPoint(x: car.midX, y: height * 0.97),
                       size: compact ? 5 : 7, color: .white.opacity(0.72), in: &context)
         }
         if !compact {
@@ -335,55 +337,6 @@ struct RoadsterFlightView: View {
         }
     }
 
-    private func drawRoadster(in context: inout GraphicsContext, width: CGFloat, height: CGFloat,
-                              bottom: CGFloat, compact: Bool, pitch: Double, scale: Double,
-                              shift: Double, phase: Double, thrust: Double, groundY: CGFloat) -> CGRect {
-        let cgImage = RoadsterAsset.image
-        let aspect = CGFloat(cgImage.width) / CGFloat(cgImage.height)
-        let imageWidth = min(width * (compact ? 0.58 : 0.63), height * (compact ? 0.40 : 0.44) * aspect)
-        let imageHeight = imageWidth / aspect
-        let imageFrame = CGRect(x: width * 0.07 + shift,
-                                y: bottom - RoadsterAsset.visibleBounds.maxY * imageHeight,
-                                width: imageWidth, height: imageHeight)
-        let visible = CGRect(x: imageFrame.minX + RoadsterAsset.visibleBounds.minX * imageWidth,
-                      y: imageFrame.minY + RoadsterAsset.visibleBounds.minY * imageHeight,
-                      width: RoadsterAsset.visibleBounds.width * imageWidth,
-                      height: RoadsterAsset.visibleBounds.height * imageHeight)
-        let radians = pitch * .pi / 180
-        let sine: Double = sin(radians)
-        let cosine: Double = cos(radians)
-        let topMargin = height * (abs(sine) > 0.14 ? 0.17 : 0.06)
-        let rotatedHeight = CGFloat(abs(sine)) * visible.width + CGFloat(abs(cosine)) * visible.height
-        let fittedScale = min(CGFloat(scale), (groundY - topMargin) / rotatedHeight)
-        let rotatedHalfHeight = rotatedHeight * fittedScale / 2
-        // The bounded maneuver never clips through the ground or out of the scene.
-        let center = CGPoint(x: visible.midX, y: min(groundY - rotatedHalfHeight,
-            max(topMargin + rotatedHalfHeight, visible.midY)))
-        var vehicle = context
-        vehicle.clip(to: Path(CGRect(x: 0, y: 0, width: width * 0.755, height: groundY + 1)))
-        vehicle.translateBy(x: center.x, y: center.y)
-        vehicle.rotate(by: .degrees(pitch))
-        vehicle.scaleBy(x: fittedScale, y: fittedScale)
-        vehicle.translateBy(x: -visible.midX, y: -visible.midY)
-        if thrust > 0 {
-            drawColdGas(in: &vehicle, car: visible, phase: phase, width: width,
-                        groundY: groundY, thrust: thrust)
-        }
-        let car = vehicle.resolve(Image(cgImage, scale: 1, label: Text("Tesla Roadster")))
-        vehicle.draw(car, in: imageFrame)
-        if thrust > 0 {
-            let tail = CGPoint(x: visible.maxX - visible.width * 0.06, y: visible.midY + visible.height * 0.12)
-            var wake = Path()
-            wake.move(to: tail)
-            wake.addQuadCurve(to: CGPoint(x: tail.x + width * 0.12, y: tail.y + 5),
-                              control: CGPoint(x: tail.x + width * 0.05, y: tail.y - 2))
-            vehicle.stroke(wake, with: .linearGradient(Gradient(colors: [.white.opacity(thrust * 0.65), .clear]),
-                startPoint: tail, endPoint: CGPoint(x: tail.x + width * 0.12, y: tail.y)),
-                style: StrokeStyle(lineWidth: 2, lineCap: .round))
-        }
-        return visible
-    }
-
     private func drawServiceCradle(in context: inout GraphicsContext, car: CGRect, groundY: CGFloat) {
         let railY = car.maxY + 2
         var cradle = Path()
@@ -395,38 +348,6 @@ struct RoadsterFlightView: View {
         cradle.addLine(to: CGPoint(x: car.minX + car.width * 0.84, y: railY))
         context.stroke(cradle, with: .color(.white.opacity(0.26)),
                        style: StrokeStyle(lineWidth: 1, lineCap: .round, dash: [2, 3]))
-    }
-
-    private func drawColdGas(in context: inout GraphicsContext, car: CGRect, phase: Double,
-                             width: CGFloat, groundY: CGFloat, thrust: Double) {
-        let ice = Color(red: 0.65, green: 0.92, blue: 1)
-        for nozzle in [0.30, 0.72] {
-            let source = CGPoint(x: car.minX + car.width * nozzle, y: car.maxY - car.height * 0.13)
-            let length = min(width * CGFloat(0.075 + thrust * 0.055), max(CGFloat(0), groundY - source.y) + 2)
-            let spread = min(8, width * 0.025)
-            let pulse = min(1, 0.45 + thrust * 0.55) + sin(phase * 2.2 + nozzle * 5) * 0.10
-            var plume = Path()
-            plume.move(to: CGPoint(x: source.x - 1.5, y: source.y))
-            plume.addQuadCurve(to: CGPoint(x: source.x - spread, y: source.y + length),
-                               control: CGPoint(x: source.x - spread * 0.6, y: source.y + length * 0.6))
-            plume.addLine(to: CGPoint(x: source.x + spread, y: source.y + length))
-            plume.addQuadCurve(to: CGPoint(x: source.x + 1.5, y: source.y),
-                               control: CGPoint(x: source.x + spread * 0.6, y: source.y + length * 0.6))
-            plume.closeSubpath()
-            context.drawLayer { vapor in
-                vapor.addFilter(.blur(radius: 2.2))
-                vapor.fill(plume, with: .linearGradient(
-                    Gradient(colors: [.white.opacity(pulse * 0.80), ice.opacity(pulse * 0.30), ice.opacity(0)]),
-                    startPoint: source, endPoint: CGPoint(x: source.x, y: source.y + length)))
-            }
-            for index in 0..<3 {
-                let progress = (phase / (2 * .pi) + Double(index) / 3 + nozzle).truncatingRemainder(dividingBy: 1)
-                let y = source.y + CGFloat(progress) * length
-                let radius = 1 + CGFloat(progress) * spread
-                let wave = Path(ellipseIn: CGRect(x: source.x - radius, y: y, width: radius * 2, height: 2.5))
-                context.stroke(wave, with: .color(ice.opacity(sin(progress * .pi) * 0.52)), lineWidth: 0.8)
-            }
-        }
     }
 
     private func drawPreparationLights(in context: inout GraphicsContext, width: CGFloat,
@@ -447,24 +368,6 @@ struct RoadsterFlightView: View {
             .monospacedDigit().foregroundColor(color)
         context.draw(context.resolve(label), at: point, anchor: .center)
     }
-}
-
-private enum RoadsterAsset {
-    // Transparent image bounds measured from the packaged 1774 x 887 PNG.
-    static let visibleBounds = CGRect(x: 0.0203, y: 0.1387, width: 0.9605, height: 0.7125)
-    static let image: CGImage = {
-        guard let url = Bundle.main.url(forResource: "roadster", withExtension: "png") else {
-            fatalError("Missing packaged Resources/roadster.png")
-        }
-        guard let image = NSImage(contentsOf: url) else {
-            fatalError("Unable to decode packaged Roadster image")
-        }
-        var proposed = CGRect(origin: .zero, size: image.size)
-        guard let cgImage = image.cgImage(forProposedRect: &proposed, context: nil, hints: nil) else {
-            fatalError("Packaged Roadster image has no bitmap representation")
-        }
-        return cgImage
-    }()
 }
 
 private struct FlightTransition {

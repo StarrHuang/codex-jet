@@ -18,13 +18,13 @@ case "${1:-}" in
   *) print -u2 'Usage: scripts/build-app.sh [--universal]'; exit 1 ;;
 esac
 app_path="$project_root/dist/Codex Jet.app"
-mkdir -p "$app_path/Contents/MacOS" "$app_path/Contents/Resources"
+rm -f "$app_path/Contents/Resources/roadster.png"
+mkdir -p "$app_path/Contents/MacOS"
 if [[ "${1:-}" == --universal ]]; then
   xcrun lipo -create "$arm_bin/ResetApp" "$intel_bin/ResetApp" -output "$app_path/Contents/MacOS/CodexReset"
 else
   cp "$native_bin/ResetApp" "$app_path/Contents/MacOS/CodexReset"
 fi
-cp Sources/ResetApp/Resources/roadster.png "$app_path/Contents/Resources/roadster.png"
 strip -S "$app_path/Contents/MacOS/CodexReset"
 cat > "$app_path/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

@@ -29,9 +29,10 @@ public struct RoadsterFlightState: Equatable, Sendable {
 /// The reference is a visual timing study, not a measured model of vehicle physics.
 public struct RoadsterLaunchPose: Equatable, Sendable {
     public let liftProgress: Double
-    public let rotationDegrees: Double
+    public let pitchDegrees: Double
+    public let rollDegrees: Double
+    public let yawDegrees: Double
     public let thrust: Double
-    public let scale: Double
 
     public init(progress: Double, roll: Bool) {
         let t = min(1, max(0, progress))
@@ -40,10 +41,10 @@ public struct RoadsterLaunchPose: Equatable, Sendable {
             return x * x * x * (x * (x * 6 - 15) + 10)
         }
         liftProgress = smooth((t - 0.10) / 0.82)
-        let turn = smooth((t - 0.28) / 0.57)
-        let pitch = sin(t * .pi) * 13
-        rotationDegrees = (roll ? 360 * turn : 0) + pitch
+        let turn = smooth((t - 0.30) / 0.56)
+        pitchDegrees = sin(t * .pi) * (roll ? 19 : 8)
+        rollDegrees = roll ? 360 * turn : 0
+        yawDegrees = roll ? sin(t * .pi) * 16 : 0
         thrust = pow(sin(t * .pi), 2)
-        scale = 1 - (roll ? 0.32 * pow(sin(turn * .pi), 2) : 0)
     }
 }

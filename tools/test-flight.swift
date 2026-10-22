@@ -46,18 +46,19 @@ private func check(_ condition: @autoclosure () -> Bool, _ message: String) {
         let finish = RoadsterLaunchPose(progress: 1, roll: true)
         check(start.liftProgress == 0 && finish.liftProgress == 1,
               "launch starts at the old observed altitude and ends at the new one")
-        check(abs(finish.rotationDegrees - 360) < 0.001 && finish.scale == 1 && finish.thrust < 0.001,
+        check(abs(finish.rollDegrees - 360) < 0.001 && abs(finish.pitchDegrees) < 0.001 && abs(finish.yawDegrees) < 0.001 && finish.thrust < 0.001,
               "one rotation must end level, full size and without lingering launch thrust")
         var previous = 0.0
         for step in 0...100 {
             let pose = RoadsterLaunchPose(progress: Double(step) / 100, roll: true)
             check(pose.liftProgress >= previous && pose.liftProgress <= 1, "refill height curve must not overshoot")
-            check(pose.scale >= 0.68 && pose.scale <= 1, "roll stays within scene bounds")
+            check(pose.pitchDegrees >= 0 && pose.pitchDegrees <= 19, "pitch remains bounded")
+            check(pose.yawDegrees >= 0 && pose.yawDegrees <= 16, "yaw remains bounded")
             previous = pose.liftProgress
         }
-        check(RoadsterLaunchPose(progress: 0.55, roll: true).rotationDegrees > 150,
+        check(RoadsterLaunchPose(progress: 0.55, roll: true).rollDegrees > 100,
               "refill roll must have a visible inverted intermediate pose")
-        check(RoadsterLaunchPose(progress: 0.55, roll: false).rotationDegrees < 15,
+        check(RoadsterLaunchPose(progress: 0.55, roll: false).rollDegrees == 0,
               "small corrections should lift gently without a full roll")
         print("PASS: quota-to-altitude mapping, unknown/stale states, and visual bounds")
     }

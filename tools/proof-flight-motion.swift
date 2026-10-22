@@ -35,19 +35,38 @@ private struct FlightProof: View {
             try png.write(to: directory.appendingPathComponent(name + ".png"))
             if !scanCar { return (png, 0) }
             var top = rep.pixelsHigh
-            for y in 0..<rep.pixelsHigh {
-                for x in 0..<rep.pixelsWide {
+            // Restrict to the vehicle area; the stationary bottle and labels remain outside.
+            // The pearl shell is neutral and bright against the dark teal hangar.
+            for y in stride(from: Int(Double(rep.pixelsHigh) * 0.16), to: rep.pixelsHigh * 4 / 5, by: 2) {
+                for x in stride(from: rep.pixelsWide / 8, to: rep.pixelsWide * 2 / 3, by: 2) {
                     guard let color = rep.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
-                    if color.redComponent > 0.25 && color.redComponent > color.greenComponent * 1.6
-                        && color.redComponent > color.blueComponent * 1.4 {
+                    if color.redComponent > 0.45 && abs(color.redComponent - color.greenComponent) < 0.12
+                        && abs(color.greenComponent - color.blueComponent) < 0.12 {
                         top = min(top, y)
                     }
                 }
+                if top < rep.pixelsHigh { break }
             }
-            precondition(top < rep.pixelsHigh, "car asset must render from the packaged resource")
+            precondition(top < rep.pixelsHigh, "the 3D pearl shell must appear in the live view")
             return (png, top)
         }
         try await Task.sleep(for: .milliseconds(180))
+        if CommandLine.arguments.contains("--reduce-motion") {
+            input.rate = 20
+            try await Task.sleep(for: .milliseconds(250))
+            let first = try capture("reduced-first")
+            try await Task.sleep(for: .milliseconds(450))
+            let second = try capture("reduced-second")
+            precondition(first.0 == second.0, "reduced motion must remain pixel-identical at positive measured rate")
+            input.balance = 90
+            try await Task.sleep(for: .milliseconds(150))
+            let refill = try capture("reduced-refill")
+            try await Task.sleep(for: .milliseconds(450))
+            let still = try capture("reduced-still")
+            precondition(refill.1 < first.1 && refill.0 == still.0, "reduced motion must jump to observed altitude without a maneuver")
+            print("PASS: reduced motion remains static at positive rate and updates quota without flipping")
+            return
+        }
         let before = try capture("01-before-20")
         input.balance = 90
         try await Task.sleep(for: .milliseconds(450))
@@ -69,7 +88,7 @@ private struct FlightProof: View {
         let lower = try capture("07-lowered-25")
         precondition(descending.1 != settled.1 && descending.1 != lower.1, "consumption must descend through an intermediate height")
         precondition(lower.1 > settled.1, "less quota must lower the car")
-        print("PASS: live-view finite refill takeoff, interpolated descent, static zero-rate rest; red car Y=\(before.1),\(early.1),\(middle.1),\(settled.1),\(lower.1)")
+        print("PASS: live-view finite refill takeoff, interpolated descent, static zero-rate rest; pearl car Y=\(before.1),\(early.1),\(middle.1),\(settled.1),\(lower.1)")
         if ProcessInfo.processInfo.environment["CODEXRESET_FLIGHT_PREVIEW"] == "1" {
             input.balance = 0
             input.rate = 12
