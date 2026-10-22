@@ -1,0 +1,52 @@
+name: Test and publish Codex Jet
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Verify release version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: test "$GITHUB_REF_NAME" = "v$(tr -d '\n' < VERSION)"
+      - name: Behavioral tests
+        run: |
+          ./scripts/test-core.sh
+          ./scripts/test-history.sh
+          ./scripts/test-radar.sh
+          ./scripts/test-deadline.sh
+          ./scripts/test-ride.sh
+          ./scripts/test-tokens.sh
+          ./scripts/test-reminders.sh
+          ./scripts/test-reset-time.sh
+          ./scripts/test-banked.sh
+          ./scripts/test-menu.sh
+          ./scripts/test-flight.sh
+      - name: Build native app
+        if: "!startsWith(github.ref, 'refs/tags/')"
+        run: ./scripts/build-app.sh
+      - name: Build universal app
+        if: startsWith(github.ref, 'refs/tags/')
+        run: ./scripts/build-app.sh --universal
+      - name: Package signed app
+        if: startsWith(github.ref, 'refs/tags/')
+        run: ./scripts/package-release.sh
+      - name: Publish public release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            dist/CodexJet-macOS-universal.zip dist/SHA256SUMS \
+            --title "Codex Jet $GITHUB_REF_NAME" --notes-file docs/release-notes.md --latest
