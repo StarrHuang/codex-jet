@@ -74,9 +74,9 @@ final class AppModel: ObservableObject {
 
         var explanation: String {
             switch self {
-            case .bankedCard: "储备卡到期（需手动兑换，不会自动回补）"
-            case .temporaryReset: "临时重置目标"
-            case .weeklyReset: "正常订阅重置"
+            case .bankedCard: L("储备卡到期（需手动兑换，不会自动回补）")
+            case .temporaryReset: L("临时重置目标")
+            case .weeklyReset: L("正常订阅重置")
             }
         }
     }
@@ -87,7 +87,7 @@ final class AppModel: ObservableObject {
             candidates.append((reset, .weeklyReset))
         }
         let advice = extraResetAdvice
-        if [.upcoming, .observation].contains(advice.state), let deadline = advice.deadline, deadline > now {
+        if advice.state == .upcoming, let deadline = advice.deadline, deadline > now {
             candidates.append((deadline, .temporaryReset))
         }
         if bankedError == nil, let bankedResets, bankedResets.accountKey == snapshot?.accountKey,
@@ -106,6 +106,7 @@ final class AppModel: ObservableObject {
     private var menuDeadlineHours: String? {
         guard let deadline = menuDeadline else { return nil }
         let hours = deadline.timeIntervalSince(now) / 3600
+        if hours > 48 { return String(format: L("%.1f天"), hours / 24) }
         return hours < 0.05 ? "<0.1h" : String(format: "%.1fh", hours)
     }
     private var menuDeadlineSuffix: String { menuDeadlineHours.map { " " + $0 } ?? "" }
@@ -114,50 +115,32 @@ final class AppModel: ObservableObject {
         return DeadlinePace.evaluate(window: window, observedAt: snapshot.sampledAt, history: history,
             accountKey: snapshot.accountKey, deadline: menuDeadline, now: now)
     }
+    var menuRunwayLight: DeadlinePace.RunwayLight { menuPace?.runwayLight ?? .unknown }
     var menuBarTitle: String {
-        guard let window = mainWindow, let snapshot else { return "—%→— —×" }
-        let fresh = snapshot.sampledAt <= now && now.timeIntervalSince(snapshot.sampledAt) <= 600
-        let current = number(100 - window.usedPercent) + "%" + (fresh ? "" : "*")
-        let signal = hasTemporaryTarget ? "⚡" : ""
-        guard let pace = menuPace, [.tooSlow, .onTrack, .tooFast, .exhausted].contains(pace.state) else {
-            return signal + current + "→— —×" + menuDeadlineSuffix
-        }
-        if pace.state == .exhausted { return signal + current + "→0% ⏸" + menuDeadlineSuffix }
-        guard let remaining = pace.projectedRemainingAtDeadline else { return signal + current + "→— —×" + menuDeadlineSuffix }
-        let projected = remaining > 0 && remaining < 1 ? "<1" : number(remaining)
-        let change: String
-        if pace.state == .onTrack { change = "≈1×" }
-        else if let multiplier = pace.speedMultiplier {
-            var amount = multiplier > 99 ? ">99" : multiplier < 0.01 ? "<0.01"
-                : String(format: multiplier < 1 ? "%.2f" : multiplier < 10 ? "%.1f" : "%.0f", multiplier)
-            if amount.contains("."), !amount.hasPrefix("<") {
-                while amount.hasSuffix("0") { amount.removeLast() }
-                if amount.hasSuffix(".") { amount.removeLast() }
-            }
-            change = (multiplier > 1 ? "↑" : "↓") + amount + "×"
-        } else { change = "↑启动" }
-        return signal + current + "→" + projected + "% " + change + menuDeadlineSuffix
+        let current = liveRemainingPercent.map { number($0) + "%" } ?? "—%"
+        return menuRunwayLight.symbol + current + menuDeadlineSuffix
     }
     var menuBarHelp: String {
-        guard let window = mainWindow, let snapshot else { return "尚无账户额度读数；点击打开额度面板。" }
+        guard let window = mainWindow, let snapshot else { return L("尚无账户额度读数；点击打开额度面板。") }
         let fresh = snapshot.sampledAt <= now && now.timeIntervalSince(snapshot.sampledAt) <= 600
-        var lines = ["当前本轮剩余：" + number(100 - window.usedPercent) + "%" + (fresh ? "" : "（上次读数，* 表示过期）")]
+        var lines = [L("当前本轮剩余：") + number(100 - window.usedPercent) + "%" + (fresh ? "" : L("（上次读数已过期；状态栏暂不显示当前额度）"))]
+        lines.append(menuRunwayLight.explanation)
         if let target = menuDeadline {
-            lines.append("预测目标：" + (menuDeadlineExplanation ?? "") + " · " + ResetTimeDisplay.shanghai(target) + " 北京时间")
-            lines.append("距目标：" + ResetTimeDisplay.remaining(until: target, now: now))
+            lines.append(L("预测目标：") + (menuDeadlineExplanation ?? "") + " · " + L(ResetTimeDisplay.shanghai(target)) + L(" 北京时间"))
+            lines.append(L("距目标：") + L(ResetTimeDisplay.remaining(until: target, now: now)))
         }
         if let pace = menuPace, [.tooSlow, .onTrack, .tooFast].contains(pace.state),
            let remaining = pace.projectedRemainingAtDeadline {
-            lines.append(String(format: "按现速到目标时，本轮预计剩余：%.1f%%", remaining))
+            lines.append(String(format: L("按现速到目标时，本轮预计剩余：%.1f%%"), remaining))
             if let rate = pace.recentRatePerHour, let required = pace.requiredRatePerHour {
-                lines.append(String(format: "实测 %.2f → 目标 %.2f 百分点/小时", rate, required))
+                lines.append(String(format: L("实测 %.2f → 目标 %.2f 百分点/小时"), rate, required))
             }
             if let multiplier = pace.speedMultiplier {
-                lines.append(String(format: "↑/↓ 表示建议调整到当前速度的 %.2f 倍，以本轮恰好用尽为目标。", multiplier))
-            } else { lines.append("近期实测为零：需启动任务，不能计算有限的加速倍数。") }
-        } else { lines.append("— 表示缺少有效速度样本、读数过期或目标已到；不估算倍速。") }
-        if hasTemporaryTarget { lines.append("⚡ 有临时重置公告；到账时间以账户实际回补为准。") }
-        if usableBankedCount > 0 { lines.append("另有 \(usableBankedCount) 张储备卡，需手动兑换；不计入本轮预计余量。下拉查看到期与衔接安排。") }
+                lines.append(String(format: L("建议调整到当前速度的 %.2f 倍，以本轮恰好用尽为目标。"), multiplier))
+            } else { lines.append(L("近期实测为零：需启动任务，不能计算有限的加速倍数。")) }
+        } else { lines.append(L("— 表示缺少有效速度样本、读数过期或目标已到；不估算倍速。")) }
+        if hasTemporaryTarget { lines.append(L("有临时重置公告；到账时间以账户实际回补为准。")) }
+        if usableBankedCount > 0 { lines.append(L("另有 {{0}} 张储备卡，需手动兑换；不计入本轮预计余量。下拉查看到期与衔接安排。", String(describing: usableBankedCount))) }
         return lines.joined(separator: "\n")
     }
     var mainWindow: QuotaWindow? {
@@ -194,13 +177,13 @@ final class AppModel: ObservableObject {
     }
     var predictionTitle: String {
         switch weeklyPace?.state {
-        case .ahead: return "蹬太快啦，额度可能撑不到重置"
-        case .surplus: return "额度很宽裕，可以使劲蹬"
-        case .balanced: return "节奏刚刚好，稳稳蹬到重置"
-        case .exhausted: return "额度已用完，等账户重置"
-        case .stale: return "读数过期啦，先看看仪表盘"
-        case .waitingForReset: return "到重置时间啦，等服务端确认"
-        default: return "等待有效的节奏读数"
+        case .ahead: return L("蹬太快啦，额度可能撑不到重置")
+        case .surplus: return L("额度很宽裕，可以使劲蹬")
+        case .balanced: return L("节奏刚刚好，稳稳蹬到重置")
+        case .exhausted: return L("额度已用完，等账户重置")
+        case .stale: return L("读数过期啦，先看看仪表盘")
+        case .waitingForReset: return L("到重置时间啦，等服务端确认")
+        default: return L("等待有效的节奏读数")
         }
     }
     func refresh() async {
@@ -209,7 +192,7 @@ final class AppModel: ObservableObject {
         defer { refreshing = false; now = Date() }
         async let tokenRefresh: Void = refreshTokens()
         async let radarRefresh: Void = refreshRadarIfNeeded()
-        var failureStage = "额度读取失败"
+        var failureStage = L("额度读取失败")
         do {
             let live = try await Task.detached { try CodexAppServerClient().fetchSnapshot() }.value
             // Publish only a successfully fetched account. Old account history never mixes in.
@@ -220,13 +203,13 @@ final class AppModel: ObservableObject {
                     ?? live.windows.first(where: { $0.bucketID == "codex" })?.id
                     ?? live.windows.first?.id
             }
-            failureStage = "额度已读取，但历史保存失败"
+            failureStage = L("额度已读取，但历史保存失败")
             let store = try QuotaHistoryStore()
             try store.append(live)
             history = try store.load(accountKey: live.accountKey)
             error = nil
             do { bankedResets = try await BankedResetReader().read(accountKey: live.accountKey); bankedError = nil }
-            catch { bankedError = "储备重置卡读取失败：\(error.localizedDescription)" }
+            catch { bankedError = L("储备重置卡读取失败：{{0}}", String(describing: error.localizedDescription)) }
         } catch {
             self.error = "\(failureStage)：\(error.localizedDescription)"
         }
@@ -247,7 +230,7 @@ final class AppModel: ObservableObject {
             temporaryPace: temporaryResetPace, normalPace: normalPace, now: currentTime,
             bankedResets: bankedError == nil ? bankedResets : nil)
             ?? ResetReminder.banked(bankedError == nil ? bankedResets : nil, accountKey: snapshot?.accountKey, now: currentTime)
-        await reminders.reconcile(reminder, now: currentTime)
+        await reminders.reconcile(reminder, now: currentTime, runwayLight: menuRunwayLight)
     }
     func refreshTokens() async {
         guard !tokensLoading else { return }
@@ -257,7 +240,7 @@ final class AppModel: ObservableObject {
             tokenReport = try await tokenReader.read(now: Date())
             tokenError = nil
         } catch {
-            tokenError = "本机 token 统计读取失败：\(error.localizedDescription)"
+            tokenError = L("本机 token 统计读取失败：{{0}}", String(describing: error.localizedDescription))
         }
     }
     private func refreshRadarIfNeeded() async {
@@ -267,7 +250,7 @@ final class AppModel: ObservableObject {
     }
     func refreshRadar() async {
         do { radar = try await RadarData.fetch(); radarError = nil }
-        catch { radarError = "全局雷达更新失败：\(error.localizedDescription)" }
+        catch { radarError = L("全局雷达更新失败：{{0}}", String(describing: error.localizedDescription)) }
         now = Date()
         await checkReminders()
     }
@@ -281,8 +264,8 @@ final class AppModel: ObservableObject {
             encoder.dateEncodingStrategy = .iso8601
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(history).write(to: url, options: .atomic)
-            exportMessage = "已导出当前账户的 \(history.count) 个采样"
-        } catch { exportMessage = "导出失败：\(error.localizedDescription)" }
+            exportMessage = L("已导出当前账户的 {{0}} 个采样", String(describing: history.count))
+        } catch { exportMessage = L("导出失败：{{0}}", String(describing: error.localizedDescription)) }
     }
 }
 

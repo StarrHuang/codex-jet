@@ -2,6 +2,8 @@
 
 Codex Jet is a native macOS app for watching Codex quota use, reset timing, and local token activity. It reads the existing Codex CLI sign-in on this Mac, keeps quota history locally, and can show the public global reset radar from [codex-reset.com](https://codex-reset.com/).
 
+The interface supports Simplified Chinese and English. Choose either language or follow the macOS system language from the dashboard.
+
 Codex Jet is an independent community project. It is not affiliated with or endorsed by OpenAI. The global radar is third-party information and does not confirm that a reset has reached your account.
 
 ## Install
@@ -28,11 +30,14 @@ See [deployment](docs/deployment.md) for updates and release packaging. See [ver
 ## What it shows
 
 - Current Codex quota windows, reset times, and history, with separate status for stale or missing readings.
+- A compact status-bar runway light, current quota, and countdown to the nearest eligible target; countdowns longer than 48 hours display in days, while forecast and adjustment details remain in the tooltip and pace panel.
 - Measured recent pace and clearly labeled window-average estimates, with a forecast of remaining quota at reset.
 - Local token activity by model and hour, based on Codex session usage records.
 - Optional banked-reset cards read from the current local account, with identity checks and manual-redemption scenarios.
 - An optional public global reset radar with third-party source, confidence, and update time shown separately from personal quota.
-- Reset reminders and a real-time 3D flight visualization driven by observed quota and pace.
+- Reset reminders and a real-time 3D paper-plane flight visualization driven by observed quota and pace.
+
+The runway light is green when measured pace leaves a buffer, yellow within 10% of the rate needed to reach the target, red when pace is more than 10% faster than required or the quota is exhausted, and gray when readings or a valid target are unavailable. Eligible targets are a fresh weekly reset, an official reset window or timed announcement, or an unexpired banked card for the same account. A site-only observation does not create a countdown.
 
 ## Data boundaries
 
@@ -48,4 +53,4 @@ The global radar is fetched separately from `codex-reset.com`; those requests do
 - The compact weekly quota-card presentation was inspired by the Tokei app. No Tokei source code or artwork is included.
 - [CodexBar](https://github.com/steipete/CodexBar) informed the window-pace comparison and is cited as a source of product and implementation ideas. Codex Jet's implementation is independent.
 
-The fictional roadster is rendered from original procedural 3D geometry created for this project and contains no manufacturer marks. The release does not include third-party vehicle imagery.
+The paper-plane animation uses original procedural 3D geometry created for this project. The release does not include third-party aircraft imagery.

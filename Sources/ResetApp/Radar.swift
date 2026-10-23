@@ -56,11 +56,11 @@ struct RadarTimeline: Decodable, Sendable {
         let reset_verification_status: String?
         let url: String?
         var title: String {
-            if reset_kind == "banked" { return "储备重置 · " + (banked_state == "available" ? "站点监测账号已到账" : "发放公告") }
-            if reset_kind == "hard" { return "全局重置 · 站点已收录" }
-            if type == "boost" { return "额度调整信号" }
-            if reset_verification_status == "pending" { return "重置信号 · 尚待站点核验" }
-            return type == "boost" ? "额度调整信号" : "重置相关公告"
+            if reset_kind == "banked" { return L("储备重置 · ") + (banked_state == "available" ? L("站点监测账号已到账") : L("发放公告")) }
+            if reset_kind == "hard" { return L("全局重置 · 站点已收录") }
+            if type == "boost" { return L("额度调整信号") }
+            if reset_verification_status == "pending" { return L("重置信号 · 尚待站点核验") }
+            return type == "boost" ? L("额度调整信号") : L("重置相关公告")
         }
     }
     let updated_at: String
@@ -87,7 +87,7 @@ struct RadarData: Sendable {
         if let signal = forecastValue.official_signal, signal.window == nil,
            signal.signal_type == "promise", signal.corrected != true, let id = signal.tweet_id {
             do { observation = try await RadarObservation.fetch(eventID: id) }
-            catch { observationError = "观察窗口读取失败：\(error.localizedDescription)" }
+            catch { observationError = L("观察窗口读取失败：{{0}}", String(describing: error.localizedDescription)) }
         }
         return RadarData(forecast: forecastValue, timeline: timelineValue, fetchedAt: Date(),
                          observation: observation, observationError: observationError)
@@ -100,10 +100,10 @@ struct RadarData: Sendable {
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let response = response as? HTTPURLResponse, response.statusCode == 200,
               response.url?.scheme == "https", response.url?.host == "codex-reset.com" else {
-            throw NSError(domain: "Radar", code: 1, userInfo: [NSLocalizedDescriptionKey: "全局雷达来源暂时不可用"])
+            throw NSError(domain: "Radar", code: 1, userInfo: [NSLocalizedDescriptionKey: L("全局雷达来源暂时不可用")])
         }
         guard data.count <= 2_000_000 else {
-            throw NSError(domain: "Radar", code: 2, userInfo: [NSLocalizedDescriptionKey: "全局雷达响应过大"])
+            throw NSError(domain: "Radar", code: 2, userInfo: [NSLocalizedDescriptionKey: L("全局雷达响应过大")])
         }
         return try JSONDecoder().decode(T.self, from: data)
     }

@@ -1,5 +1,6 @@
 #!/bin/sh
 set -eu
+export CODEXRESET_LANGUAGE=zh-Hans
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$ROOT"
 swift build

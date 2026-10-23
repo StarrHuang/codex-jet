@@ -11,12 +11,12 @@ struct RadarObservation: Sendable {
         let regex = try NSRegularExpression(pattern: pattern)
         guard let match = regex.firstMatch(in: script, range: NSRange(script.startIndex..., in: script)),
               let range = Range(match.range(at: 1), in: script) else {
-            throw NSError(domain: "RadarObservation", code: 1, userInfo: [NSLocalizedDescriptionKey: "站点观察窗口格式已变化"])
+            throw NSError(domain: "RadarObservation", code: 1, userInfo: [NSLocalizedDescriptionKey: L("站点观察窗口格式已变化")])
         }
         let deadlines = try JSONDecoder().decode([String: String].self, from: Data(script[range].utf8))
         guard let value = deadlines[eventID] else { return nil }
         guard let deadline = parseDate(value) else {
-            throw NSError(domain: "RadarObservation", code: 2, userInfo: [NSLocalizedDescriptionKey: "站点观察截止时间无效"])
+            throw NSError(domain: "RadarObservation", code: 2, userInfo: [NSLocalizedDescriptionKey: L("站点观察截止时间无效")])
         }
         return RadarObservation(eventID: eventID, deadline: deadline, sourceURL: sourceURL)
     }
@@ -27,7 +27,7 @@ struct RadarObservation: Sendable {
         guard let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
               let range = Range(match.range(at: 1), in: html),
               let entry = URL(string: String(html[range]), relativeTo: URL(string: "https://codex-reset.com")!)?.absoluteURL else {
-            throw NSError(domain: "RadarObservation", code: 3, userInfo: [NSLocalizedDescriptionKey: "无法定位站点观察窗口来源"])
+            throw NSError(domain: "RadarObservation", code: 3, userInfo: [NSLocalizedDescriptionKey: L("无法定位站点观察窗口来源")])
         }
         let source = entry.deletingLastPathComponent().appendingPathComponent("home-countdown.js")
         return try decode(script: await text(source), eventID: eventID, sourceURL: source)
@@ -40,7 +40,7 @@ struct RadarObservation: Sendable {
         guard let response = response as? HTTPURLResponse, response.statusCode == 200,
               response.url?.scheme == "https", response.url?.host == "codex-reset.com", data.count <= 2_000_000,
               let text = String(data: data, encoding: .utf8) else {
-            throw NSError(domain: "RadarObservation", code: 4, userInfo: [NSLocalizedDescriptionKey: "观察窗口来源暂时不可用"])
+            throw NSError(domain: "RadarObservation", code: 4, userInfo: [NSLocalizedDescriptionKey: L("观察窗口来源暂时不可用")])
         }
         return text
     }

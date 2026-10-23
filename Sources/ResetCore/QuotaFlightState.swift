@@ -1,10 +1,10 @@
 import Foundation
 
 /// Maps an observed remaining-quota percentage directly to a normalized flight height.
-public struct RoadsterFlightState: Equatable, Sendable {
+public struct QuotaFlightState: Equatable, Sendable {
     /// A clamped observed balance, or nil when the balance is missing, stale, or non-finite.
     public let remainingPercent: Double?
-    /// 0 means the Roadster rests on the pad; 1 means the configured maximum altitude.
+    /// 0 means the paper plane rests on the pad; 1 means the configured maximum altitude.
     public let liftFraction: Double?
     /// Scene widths per second. Compresses the measured rate smoothly, without confusing it with quota.
     public let travelSpeed: Double
@@ -25,26 +25,18 @@ public struct RoadsterFlightState: Equatable, Sendable {
     }
 }
 
-/// One bounded refill maneuver: pressure builds, lift accelerates, the vehicle rolls and levels out.
-/// The reference is a visual timing study, not a measured model of vehicle physics.
-public struct RoadsterLaunchPose: Equatable, Sendable {
+/// One bounded paper-plane takeoff and bank after an observed refill.
+public struct PaperPlaneLaunchPose: Equatable, Sendable {
     public let liftProgress: Double
     public let pitchDegrees: Double
-    public let rollDegrees: Double
+    public let bankDegrees: Double
     public let yawDegrees: Double
-    public let thrust: Double
-
-    public init(progress: Double, roll: Bool) {
+    public init(progress: Double, bank: Bool) {
         let t = min(1, max(0, progress))
-        func smooth(_ value: Double) -> Double {
-            let x = min(1, max(0, value))
-            return x * x * x * (x * (x * 6 - 15) + 10)
-        }
-        liftProgress = smooth((t - 0.10) / 0.82)
-        let turn = smooth((t - 0.30) / 0.56)
-        pitchDegrees = sin(t * .pi) * (roll ? 19 : 8)
-        rollDegrees = roll ? 360 * turn : 0
-        yawDegrees = roll ? sin(t * .pi) * 16 : 0
-        thrust = pow(sin(t * .pi), 2)
+        let x = min(1, max(0, (t - 0.10) / 0.82))
+        liftProgress = x * x * x * (x * (x * 6 - 15) + 10)
+        pitchDegrees = sin(t * .pi) * (bank ? 16 : 7)
+        bankDegrees = bank ? sin(t * .pi) * 28 : 0
+        yawDegrees = bank ? sin(t * .pi) * 9 : 0
     }
 }

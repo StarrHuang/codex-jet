@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import ResetCore
 // Older macOS SDKs omit Sendable annotations on immutable notification snapshots.
 @preconcurrency import UserNotifications
 
@@ -11,8 +12,8 @@ final class ResetNotificationController: NSObject, ObservableObject, UNUserNotif
             if !enabled { dismissCurrent() }
         }
     }
-    @Published private(set) var permission = "尚未检查系统通知权限"
-    @Published private(set) var delivery = "等待即将到来的重置"
+    @Published private(set) var permission = L("尚未检查系统通知权限")
+    @Published private(set) var delivery = L("等待即将到来的重置")
     @Published private(set) var error: String?
     @Published private(set) var active: ResetReminder?
     var openDashboard: (() -> Void)?
@@ -22,6 +23,7 @@ final class ResetNotificationController: NSObject, ObservableObject, UNUserNotif
     private var reminderHostingView: NSHostingView<ResetReminderCard>?
     private var attentionRequest: Int?
     private var started = false
+    private var runwayLight: DeadlinePace.RunwayLight = .unknown
     private var center: UNUserNotificationCenter { .current() }
     private static let category = "CODEX_RESET_REMINDER"
 
@@ -30,7 +32,7 @@ final class ResetNotificationController: NSObject, ObservableObject, UNUserNotif
         enabled = defaults.object(forKey: "resetRemindersEnabled") as? Bool ?? true
         if let data = defaults.data(forKey: "resetReminderLedger") {
             do { ledger = try JSONDecoder().decode(ResetReminderLedger.self, from: data) }
-            catch { ledger = ResetReminderLedger(); super.init(); self.error = "提醒记录读取失败：\(error.localizedDescription)"; return }
+            catch { ledger = ResetReminderLedger(); super.init(); self.error = L("提醒记录读取失败：{{0}}", String(describing: error.localizedDescription)); return }
         } else { ledger = ResetReminderLedger() }
         super.init()
     }
@@ -39,15 +41,24 @@ final class ResetNotificationController: NSObject, ObservableObject, UNUserNotif
         guard !started else { return }
         started = true
         center.delegate = self
+        registerCategories()
+        if enabled { await enableSystemNotifications() }
+        else { await updatePermission() }
+    }
+
+    private func registerCategories() {
         let actions = [
-            UNNotificationAction(identifier: "OPEN", title: "查看额度", options: .foreground),
-            UNNotificationAction(identifier: "SNOOZE", title: "15 分钟后提醒"),
-            UNNotificationAction(identifier: "ACK", title: "我知道了")
+            UNNotificationAction(identifier: "OPEN", title: L("查看额度"), options: .foreground),
+            UNNotificationAction(identifier: "SNOOZE", title: L("15 分钟后提醒")),
+            UNNotificationAction(identifier: "ACK", title: L("我知道了"))
         ]
         center.setNotificationCategories([UNNotificationCategory(identifier: Self.category,
                                       actions: actions, intentIdentifiers: [], options: .customDismissAction)])
-        if enabled { await enableSystemNotifications() }
-        else { await updatePermission() }
+    }
+    func updateLanguage() async {
+        registerCategories()
+        await updatePermission()
+        if active == nil { delivery = L("等待即将到来的重置") }
     }
 
     func enableSystemNotifications() async {
@@ -57,7 +68,7 @@ final class ResetNotificationController: NSObject, ObservableObject, UNUserNotif
                 _ = try await center.requestAuthorization(options: [.alert, .sound, .badge])
             }
             await updatePermission()
-        } catch { self.error = "系统通知权限请求失败：\(error.localizedDescription)" }
+        } catch { self.error = L("系统通知权限请求失败：{{0}}", String(describing: error.localizedDescription)) }
     }
 
     func updatePermission() async {
@@ -65,15 +76,16 @@ final class ResetNotificationController: NSObject, ObservableObject, UNUserNotif
         switch settings.authorizationStatus {
         case .authorized, .provisional, .ephemeral:
             permission = settings.alertSetting == .enabled
-                ? (settings.alertStyle == .alert ? "系统通知已允许 · 持续提醒" : "系统通知已允许 · 临时横幅")
-                : "系统通知已授权，但横幅未启用"
-        case .denied: permission = "系统通知未允许；常驻提醒窗仍有效"
-        case .notDetermined: permission = "系统通知尚未授权；常驻提醒窗仍有效"
-        @unknown default: permission = "系统通知权限状态未知"
+                ? (settings.alertStyle == .alert ? L("系统通知已允许 · 持续提醒") : L("系统通知已允许 · 临时横幅"))
+                : L("系统通知已授权，但横幅未启用")
+        case .denied: permission = L("系统通知未允许；常驻提醒窗仍有效")
+        case .notDetermined: permission = L("系统通知尚未授权；常驻提醒窗仍有效")
+        @unknown default: permission = L("系统通知权限状态未知")
         }
     }
 
-    func reconcile(_ reminder: ResetReminder?, now: Date) async {
+    func reconcile(_ reminder: ResetReminder?, now: Date, runwayLight: DeadlinePace.RunwayLight = .unknown) async {
+        self.runwayLight = runwayLight
         guard enabled else { return }
         if let active, active.isTest, active.expiresAt > now { return }
         let delivered = await center.deliveredNotifications()
@@ -97,7 +109,7 @@ final class ResetNotificationController: NSObject, ObservableObject, UNUserNotif
     func sendTest() async {
         guard started else { return }
         if let active, !active.isTest {
-            delivery = "已有真实重置提醒，请先确认后再测试"
+            delivery = L("已有真实重置提醒，请先确认后再测试")
             panel?.makeKeyAndOrderFront(nil)
             return
         }
@@ -112,7 +124,7 @@ final class ResetNotificationController: NSObject, ObservableObject, UNUserNotif
         active = reminder
         showPanel(reminder)
         attentionRequest = NSApp.requestUserAttention(.informationalRequest)
-        NSApp.dockTile.badgeLabel = "蹬"
+        NSApp.dockTile.badgeLabel = L("蹬")
         let content = UNMutableNotificationContent()
         content.title = reminder.title
         content.body = reminder.detail
@@ -124,7 +136,7 @@ final class ResetNotificationController: NSObject, ObservableObject, UNUserNotif
         guard active?.id == reminder.id, enabled else { return }
         guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
             NSSound(named: "Glass")?.play()
-            delivery = "已弹出常驻提醒窗；系统通知未获授权"
+            delivery = L("已弹出常驻提醒窗；系统通知未获授权")
             return
         }
         do {
@@ -135,22 +147,22 @@ final class ResetNotificationController: NSObject, ObservableObject, UNUserNotif
             }
             let delivered = await center.deliveredNotifications()
             delivery = delivered.contains(where: { $0.request.identifier == reminder.id })
-                ? "已送达通知中心，并弹出常驻提醒窗" : "已提交系统通知，并弹出常驻提醒窗"
+                ? L("已送达通知中心，并弹出常驻提醒窗") : L("已提交系统通知，并弹出常驻提醒窗")
             error = nil
-        } catch { self.error = "系统通知发送失败：\(error.localizedDescription)；常驻提醒窗仍有效" }
+        } catch { self.error = L("系统通知发送失败：{{0}}；常驻提醒窗仍有效", String(describing: error.localizedDescription)) }
     }
 
     func acknowledge() {
         guard let active else { return }
         if !active.isTest { ledger.acknowledge(active); saveLedger() }
-        delivery = active.isTest ? "测试提醒已确认" : "已确认本阶段提醒；临近截止时仍会分级提醒"
+        delivery = active.isTest ? L("测试提醒已确认") : L("已确认本阶段提醒；临近截止时仍会分级提醒")
         dismissCurrent()
     }
 
     func snooze() {
         guard let active else { return }
         if !active.isTest { ledger.snooze(active, now: Date()); saveLedger() }
-        delivery = active.isTest ? "测试提醒已关闭" : "15 分钟后重新检查；事件失效则不再提醒"
+        delivery = active.isTest ? L("测试提醒已关闭") : L("15 分钟后重新检查；事件失效则不再提醒")
         dismissCurrent()
     }
 
@@ -172,14 +184,14 @@ final class ResetNotificationController: NSObject, ObservableObject, UNUserNotif
 
     private func saveLedger() {
         do { defaults.set(try JSONEncoder().encode(ledger), forKey: "resetReminderLedger") }
-        catch { self.error = "提醒记录保存失败：\(error.localizedDescription)" }
+        catch { self.error = L("提醒记录保存失败：{{0}}", String(describing: error.localizedDescription)) }
     }
 
     private func showPanel(_ reminder: ResetReminder) {
         if panel == nil {
             let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 510, height: 360),
                                 styleMask: [.titled, .nonactivatingPanel], backing: .buffered, defer: false)
-            panel.title = "Codex Jet · 常驻提醒"
+            panel.title = L("Codex Jet · 常驻提醒")
             panel.level = .floating
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             panel.hidesOnDeactivate = false
@@ -196,7 +208,7 @@ final class ResetNotificationController: NSObject, ObservableObject, UNUserNotif
     }
 
     private func updatePanel(_ reminder: ResetReminder) {
-        let rootView = ResetReminderCard(reminder: reminder,
+        let rootView = ResetReminderCard(reminder: reminder, runwayLight: runwayLight,
             acknowledge: { [weak self] in self?.acknowledge() },
             snooze: { [weak self] in self?.snooze() },
             open: { [weak self] in self?.viewDashboard() })
@@ -235,6 +247,7 @@ final class ResetNotificationController: NSObject, ObservableObject, UNUserNotif
 
 struct ResetReminderCard: View {
     let reminder: ResetReminder
+    var runwayLight: DeadlinePace.RunwayLight = .unknown
     let acknowledge: () -> Void
     let snooze: () -> Void
     let open: () -> Void
@@ -246,11 +259,11 @@ struct ResetReminderCard: View {
         guard reminder.recentRate != nil || reminder.requiredRate != nil
                 || reminder.projectedRemaining != nil || reminder.multiplier != nil else { return nil }
         var parts: [String] = []
-        if let rate = reminder.recentRate { parts.append(String(format: "近期实测 %.2f 百分点/小时", rate)) }
-        if let rate = reminder.requiredRate { parts.append(String(format: "目标需 %.2f 百分点/小时", rate)) }
-        if let remaining = reminder.projectedRemaining { parts.append(String(format: "按当前速度届时约剩 %.0f%%", remaining)) }
+        if let rate = reminder.recentRate { parts.append(String(format: L("近期实测 %.2f 百分点/小时"), rate)) }
+        if let rate = reminder.requiredRate { parts.append(String(format: L("目标需 %.2f 百分点/小时"), rate)) }
+        if let remaining = reminder.projectedRemaining { parts.append(String(format: L("按当前速度届时约剩 %.0f%%"), remaining)) }
         if let multiplier = reminder.multiplier {
-            parts.append(String(format: multiplier > 1.1 ? "建议加速至 %.2f×" : multiplier < 0.9 ? "建议放慢至 %.2f×" : "目标约 %.2f×", multiplier))
+            parts.append(String(format: multiplier > 1.1 ? L("建议加速至 %.2f×") : multiplier < 0.9 ? L("建议放慢至 %.2f×") : L("目标约 %.2f×"), multiplier))
         }
         return parts.joined(separator: " · ")
     }
@@ -258,14 +271,14 @@ struct ResetReminderCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {
             HStack {
-                Text(reminder.isTest ? "通知功能测试" : "重置将近 · 额度别浪费")
+                Text(reminder.isTest ? L("通知功能测试") : L("重置将近 · 额度别浪费"))
                     .font(.system(size: 11, weight: .bold, design: .monospaced)).foregroundStyle(.orange)
                 Spacer()
                 Image(systemName: "bell.badge.fill").foregroundStyle(.orange).font(.title2)
             }
             HStack(spacing: 14) {
-                RoadsterFlightView(remainingPercent: reminder.currentRemaining, ratePerHour: reminder.recentRate,
-                                   announced: !reminder.isTest, animated: kickoff)
+                PaperPlaneFlightView(remainingPercent: reminder.currentRemaining, ratePerHour: reminder.recentRate,
+                                   announced: !reminder.isTest, animated: kickoff, runwayLight: runwayLight)
                     .frame(width: 108, height: 82)
                 Text(reminder.title).font(.system(size: 22, weight: .bold)).fixedSize(horizontal: false, vertical: true)
             }
@@ -273,7 +286,7 @@ struct ResetReminderCard: View {
                 TimelineView(.periodic(from: .now, by: 30)) { timeline in
                     HStack(spacing: 8) {
                         Image(systemName: "scope").foregroundStyle(.orange)
-                        Text("目标 · \(ResetReminder.dateText(deadline)) 上海时间")
+                        Text(L("目标 · {{0}} 上海时间", String(describing: ResetReminder.dateText(deadline))))
                         Spacer()
                         Text(countdown(until: deadline, now: timeline.date))
                             .font(.system(size: 11, weight: .semibold, design: .monospaced))
@@ -292,14 +305,14 @@ struct ResetReminderCard: View {
                 .lineSpacing(5).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 10) {
                 Button(action: open) {
-                    Text("查看额度").padding(.horizontal, 12).padding(.vertical, 8)
+                    Text(L("查看额度")).padding(.horizontal, 12).padding(.vertical, 8)
                         .background(ink.accent, in: RoundedRectangle(cornerRadius: 6)).foregroundStyle(.black)
                 }.buttonStyle(.plain)
-                Button("15 分钟后提醒", action: snooze).buttonStyle(.bordered)
+                Button(L("15 分钟后提醒"), action: snooze).buttonStyle(.bordered)
                 Spacer()
-                Button("我知道了", action: acknowledge).buttonStyle(.bordered)
+                Button(L("我知道了"), action: acknowledge).buttonStyle(.bordered)
             }.font(.system(size: 11))
-            Text("常驻显示，直到确认或稍后提醒；重置窗口失效后自动收起。")
+            Text(L("常驻显示，直到确认或稍后提醒；重置窗口失效后自动收起。"))
                 .font(.system(size: 9)).foregroundStyle(ink.secondary)
         }.padding(22).frame(width: 510, alignment: .leading)
             .background(LinearGradient(colors: [Color(red: 0.14, green: 0.19, blue: 0.14), ink.background],
@@ -316,10 +329,10 @@ struct ResetReminderCard: View {
 
     private func countdown(until deadline: Date, now: Date) -> String {
         let seconds = max(0, Int(deadline.timeIntervalSince(now)))
-        if seconds == 0 { return "目标时间已到" }
+        if seconds == 0 { return L("目标时间已到") }
         let days = seconds / 86_400
         let hours = (seconds % 86_400) / 3_600
         let minutes = (seconds % 3_600) / 60
-        return days > 0 ? "剩余 \(days)天 \(hours)小时" : "剩余 \(hours)小时 \(minutes)分"
+        return days > 0 ? L("剩余 {{0}}天 {{1}}小时", String(describing: days), String(describing: hours)) : L("剩余 {{0}}小时 {{1}}分", String(describing: hours), String(describing: minutes))
     }
 }

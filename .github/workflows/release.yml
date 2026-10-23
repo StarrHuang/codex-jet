@@ -33,6 +33,7 @@ jobs:
           ./scripts/test-banked.sh
           ./scripts/test-menu.sh
           ./scripts/test-flight.sh
+          ./scripts/test-localization.sh
       - name: Build native app
         if: "!startsWith(github.ref, 'refs/tags/')"
         run: ./scripts/build-app.sh

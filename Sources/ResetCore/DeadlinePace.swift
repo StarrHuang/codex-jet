@@ -28,6 +28,20 @@ public struct DeadlinePace: Equatable, Sendable {
         case tooFast
     }
 
+    /// Runway at the chosen deadline: >10% faster than required risks an early stop;
+    /// within +/-10% is near the boundary; a slower rate leaves a usable buffer.
+    public enum RunwayLight: String, Sendable {
+        case unknown, red, yellow, green
+    }
+    public var runwayLight: RunwayLight {
+        switch state {
+        case .tooFast, .exhausted: .red
+        case .onTrack: .yellow
+        case .tooSlow: .green
+        default: .unknown
+        }
+    }
+
     /// Measurements are ordered by 1h, 6h, then 24h horizons.
     public let measurements: [Measurement]
     /// The first eligible measurement in the order above.

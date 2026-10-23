@@ -13,18 +13,18 @@ struct ExtraResetAdvice {
     var conversion: ResetTimeConversion? = nil
     var targetName: String {
         switch deadlineBasis {
-        case .official: "官方窗口目标"
-        case .observation: "站点观察目标"
-        case .converted: "公告原文换算目标"
-        case nil: "公告时间未明确"
+        case .official: L("官方窗口目标")
+        case .observation: L("站点观察目标")
+        case .converted: L("公告原文换算目标")
+        case nil: L("公告时间未明确")
         }
     }
     var conversionNote: String? {
         guard let conversion else { return nil }
-        let zoneLabel = conversion.sourceZone == "announcement-relative" ? "发帖时刻与相对时长" : conversion.sourceZone
-        var note = "按原文 \(zoneLabel) 换算：\(ResetTimeDisplay.shanghai(conversion.deadline)) 前（北京时间 UTC+8）。"
+        let zoneLabel = conversion.sourceZone == "announcement-relative" ? L("发帖时刻与相对时长") : conversion.sourceZone
+        var note = L("按原文 {{0}} 换算：{{1}} 前（北京时间 UTC+8）。", String(describing: zoneLabel), String(describing: L(ResetTimeDisplay.shanghai(conversion.deadline))))
         if let alternate = conversion.alternateDeadline {
-            note += "原文若泛指太平洋当地时间，则为 \(ResetTimeDisplay.shanghai(alternate)) 前；两种解释请留意。"
+            note += L("原文若泛指太平洋当地时间，则为 {{0}} 前；两种解释请留意。", String(describing: L(ResetTimeDisplay.shanghai(alternate))))
         }
         return note
     }

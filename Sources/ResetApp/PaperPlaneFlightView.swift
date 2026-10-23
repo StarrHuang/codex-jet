@@ -3,24 +3,25 @@ import SwiftUI
 import ResetCore
 
 /// A synthetic launch-pad scene whose vehicle height follows only the latest usable quota balance.
-struct RoadsterFlightView: View {
+struct PaperPlaneFlightView: View {
     let remainingPercent: Double?
     let ratePerHour: Double?
     var stale = false
     var announced = false
     var animated = true
+    var runwayLight: DeadlinePace.RunwayLight = .unknown
 
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.scenePhase) private var scenePhase
-    @StateObject private var renderer = Roadster3DRenderer()
+    @StateObject private var renderer = PaperPlane3DRenderer()
     @State private var transition: FlightTransition?
     @State private var transitionTask: Task<Void, Never>?
     @State private var travelOrigin = Date()
     @State private var traveled = 0.0
 
     private var reduceMotion: Bool { systemReduceMotion || CommandLine.arguments.contains("--reduce-motion") }
-    private var flight: RoadsterFlightState {
-        RoadsterFlightState(remainingPercent: remainingPercent, stale: stale, ratePerHour: ratePerHour)
+    private var flight: QuotaFlightState {
+        QuotaFlightState(remainingPercent: remainingPercent, stale: stale, ratePerHour: ratePerHour)
     }
     private var motionAllowed: Bool { animated && !reduceMotion && scenePhase == .active }
     private var hasPositiveBalance: Bool { (flight.remainingPercent ?? 0) > 0 }
@@ -39,7 +40,7 @@ struct RoadsterFlightView: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
-        .help("高度 = 当前剩余额度；飞行与地面掠过速度 = 近期实测消耗（平滑压缩显示）。实际回补后短暂起飞翻转，随后回到额度对应高度。")
+        .help(L("高度 = 当前剩余额度；飞行与地面掠过速度 = 近期实测消耗（平滑压缩显示）。实际回补后短暂轻盈起飞，随后回到额度对应高度。"))
         .onChange(of: flight.travelSpeed) { oldSpeed, _ in
             let now = Date()
             traveled += now.timeIntervalSince(travelOrigin) * oldSpeed
@@ -77,10 +78,10 @@ struct RoadsterFlightView: View {
     }
 
     private var accessibilityLabel: String {
-        if stale { return "额度读数已过期；飞行高度与容量暂不判断" }
-        guard let remaining = flight.remainingPercent else { return "等待有效额度读数；飞行高度与容量暂不判断" }
-        let rate = ratePerHour.map { String(format: "，近期消耗 %.2f 百分点每小时", $0) } ?? "，速度待采样"
-        return String(format: "Roadster 飞行演示，剩余额度 %.0f%%", remaining) + rate
+        if stale { return L("额度读数已过期；飞行高度与容量暂不判断") }
+        guard let remaining = flight.remainingPercent else { return L("等待有效额度读数；飞行高度与容量暂不判断") }
+        let rate = ratePerHour.map { String(format: L("，近期消耗 %.2f 百分点每小时"), $0) } ?? L("，速度待采样")
+        return String(format: L("纸飞机滑翔，剩余额度 %.0f%%"), remaining) + rate + "；" + runwayLight.explanation
     }
 
     private func beginTransition(from: Double, to: Double, rising: Bool) {
@@ -99,17 +100,17 @@ struct RoadsterFlightView: View {
         transition = nil
     }
 
-    private func flightSample(at date: Date) -> (fraction: Double?, pose: RoadsterLaunchPose?) {
+    private func flightSample(at date: Date) -> (fraction: Double?, pose: PaperPlaneLaunchPose?) {
         guard hasPositiveBalance, let transition else { return (flight.liftFraction, nil) }
         let progress = min(1, max(0, date.timeIntervalSince(transition.start) / transition.duration))
-        let pose = transition.rising ? RoadsterLaunchPose(progress: progress,
-            roll: transition.to >= 0.55 && transition.to - transition.from >= 0.20) : nil
+        let pose = transition.rising ? PaperPlaneLaunchPose(progress: progress,
+            bank: transition.to >= 0.55 && transition.to - transition.from >= 0.20) : nil
         let eased = pose?.liftProgress ?? progress * progress * (3 - 2 * progress)
         return (transition.from + (transition.to - transition.from) * eased, pose)
     }
 
     private func drawScene(in context: inout GraphicsContext, size: CGSize, phase: Double,
-                           animating: Bool, liftFraction: Double?, launch: RoadsterLaunchPose?) {
+                           animating: Bool, liftFraction: Double?, launch: PaperPlaneLaunchPose?) {
         guard size.width > 0, size.height > 0 else { return }
         let width = size.width
         let height = size.height
@@ -134,27 +135,27 @@ struct RoadsterFlightView: View {
         scene.clip(to: Path(CGRect(x: 0, y: 0, width: width * 0.755, height: height)))
         scene.draw(Image(decorative: rendered.image, scale: 2),
                    in: CGRect(x: 0, y: 0, width: width * 0.755, height: height))
-        let car = rendered.carBounds
+        let car = rendered.planeBounds
         if quota == nil { drawServiceCradle(in: &context, car: car, groundY: groundY) }
         if flight.remainingPercent == 0 {
             drawLabel("PAD", at: CGPoint(x: car.midX, y: height * 0.97),
                       size: compact ? 5 : 7, color: .white.opacity(0.72), in: &context)
         }
         if !compact {
-            let state: String = quota == nil ? (stale ? "读数过期" : "等待读数")
-                : quota == 0 ? "已着陆" : launch != nil ? "回补 · 起飞"
-                : ratePerHour == nil ? "速度待采样" : flight.travelSpeed > 0 ? "巡航" : "悬停待命"
+            let state: String = quota == nil ? (stale ? L("读数过期") : L("等待读数"))
+                : quota == 0 ? L("已着陆") : launch != nil ? L("回补 · 起飞")
+                : ratePerHour == nil ? L("速度待采样") : flight.travelSpeed > 0 ? L("滑翔") : L("悬停待命")
             drawLabel(state, at: CGPoint(x: width * 0.18, y: height * 0.09), size: 8,
                       color: .white.opacity(0.68), in: &context)
             if let ratePerHour, quota != nil {
-                drawLabel(String(format: "%.1f 点/h", ratePerHour),
+                drawLabel(String(format: L("%.1f 点/h"), ratePerHour),
                           at: CGPoint(x: width * 0.50, y: height * 0.09), size: 9,
                           color: Color(red: 0.65, green: 0.92, blue: 1), in: &context)
             }
         }
         if announced {
             if !compact {
-                drawLabel("公告待确认", at: CGPoint(x: width * 0.30, y: height * 0.95),
+                drawLabel(L("公告待确认"), at: CGPoint(x: width * 0.30, y: height * 0.95),
                           size: 8, color: Color(red: 1, green: 0.75, blue: 0.42), in: &context)
             }
             drawPreparationLights(in: &context, width: width, groundY: groundY, compact: compact)
@@ -293,19 +294,19 @@ struct RoadsterFlightView: View {
             let gauge = Path(ellipseIn: CGRect(x: center.x - gaugeRadius, y: center.y - gaugeRadius,
                                                width: gaugeRadius * 2, height: gaugeRadius * 2))
             context.fill(gauge, with: .color(Color(red: 0.025, green: 0.045, blue: 0.055)))
-            context.stroke(gauge, with: .color(.white.opacity(0.72)), lineWidth: compact ? 0.7 : 1)
+            context.stroke(gauge, with: .color(runwayLight.color.opacity(0.85)), lineWidth: compact ? 0.7 : 1)
             let angle = Double.pi * 0.75 + Double(min(100, max(0, remaining))) / 100 * Double.pi * 1.5
             var needle = Path()
             needle.move(to: center)
             needle.addLine(to: CGPoint(x: center.x + cos(angle) * gaugeRadius * 0.78,
                                        y: center.y + sin(angle) * gaugeRadius * 0.78))
-            context.stroke(needle, with: .color(remaining == 0 ? .white.opacity(0.58) : .white),
+            context.stroke(needle, with: .color(runwayLight.color),
                            style: StrokeStyle(lineWidth: compact ? 0.6 : 1, lineCap: .round))
             if !compact {
                 drawLabel(String(format: "%.0f%%", remaining),
                           at: CGPoint(x: tank.midX, y: tank.maxY + 5), size: 10,
                           color: .white.opacity(0.92), in: &context)
-                drawLabel("额度", at: CGPoint(x: tank.midX, y: tank.maxY + 16),
+                drawLabel(L("额度"), at: CGPoint(x: tank.midX, y: tank.maxY + 16),
                           size: 7, color: .white.opacity(0.66), in: &context)
             }
             let segmentCount = 8
@@ -319,7 +320,7 @@ struct RoadsterFlightView: View {
                                    cornerRadius: segmentHeight * 0.35)
                 let isLit = index >= segmentCount - activeSegments
                 let segmentColor = isLit
-                    ? Color(red: 0.38, green: 0.92, blue: 0.79).opacity(0.94)
+                    ? runwayLight.color.opacity(0.94)
                     : Color.white.opacity(0.14)
                 context.fill(segment, with: .color(segmentColor))
             }
@@ -379,7 +380,7 @@ private struct FlightTransition {
 
     func fraction(at date: Date) -> Double {
         let progress = min(1, max(0, date.timeIntervalSince(start) / duration))
-        let eased = rising ? RoadsterLaunchPose(progress: progress, roll: false).liftProgress
+        let eased = rising ? PaperPlaneLaunchPose(progress: progress, bank: false).liftProgress
             : progress * progress * (3 - 2 * progress)
         return from + (to - from) * eased
     }

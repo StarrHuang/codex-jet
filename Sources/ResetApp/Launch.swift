@@ -4,10 +4,11 @@ import ResetCore
 
 struct ResetDesktopApp: App {
     @StateObject private var model = AppModel()
+    @AppStorage("appLanguage") private var language = "system"
     @Environment(\.openWindow) private var openWindow
     var body: some Scene {
         WindowGroup("Codex Jet", id: "dashboard") {
-            Dashboard(model: model)
+            Dashboard(model: model).id(language)
                 .task {
                     let appModel = model
                     let showWindow = openWindow
@@ -18,16 +19,21 @@ struct ResetDesktopApp: App {
                     }
                     model.startMonitoring()
                 }
+                .onChange(of: language) { _, _ in
+                    Task { await model.reminders.updateLanguage(); await model.checkReminders() }
+                }
                 .environment(\.timeZone, TimeZone(identifier: "Asia/Shanghai")!)
-                .environment(\.locale, Locale(identifier: "zh_CN"))
+                .environment(\.locale, AppLanguage.locale)
         }.defaultSize(width: 1240, height: 1000)
         MenuBarExtra {
             QuotaPopover(model: model) {
                 openWindow(id: "dashboard")
                 NSApp.activate(ignoringOtherApps: true)
-            }
+            }.id(language)
+                .environment(\.locale, AppLanguage.locale)
+                .environment(\.timeZone, TimeZone(identifier: "Asia/Shanghai")!)
         } label: {
-            QuotaMenuLabel(model: model)
+            QuotaMenuLabel(model: model).id(language)
         }.menuBarExtraStyle(.window)
     }
 }
@@ -75,7 +81,7 @@ enum Launch {
                 let quota = try await Task.detached { try CodexAppServerClient().fetchSnapshot() }.value
                 let stored = try await BankedResetReader().read(accountKey: quota.accountKey)
                 let payload: [String: Any] = ["availableCount": stored.cards.count,
-                    "expiresAtShanghai": stored.cards.map { ResetTimeDisplay.shanghai($0.expiresAt) }]
+                    "expiresAtShanghai": stored.cards.map { L(ResetTimeDisplay.shanghai($0.expiresAt)) }]
                 print(String(decoding: try JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys]), as: UTF8.self))
                 exit(0)
             } catch { fputs("Banked reset probe failed: \(error.localizedDescription)\n", stderr); exit(1) }
@@ -88,8 +94,8 @@ enum Launch {
                 let payload: [String: Any] = [
                     "state": String(describing: advice.state), "basis": advice.targetName,
                     "deadline": advice.deadline.map { ISO8601DateFormatter().string(from: $0) } ?? "unknown",
-                    "remaining": advice.deadline.map { ResetTimeDisplay.remaining(until: $0, now: now) } ?? "时间未明确",
-                    "conversion": advice.conversionNote ?? "无文字换算",
+                    "remaining": advice.deadline.map { L(ResetTimeDisplay.remaining(until: $0, now: now)) } ?? L("时间未明确"),
+                    "conversion": advice.conversionNote ?? L("无文字换算"),
                     "source": advice.sourceURL?.absoluteString ?? "unknown"
                 ]
                 print(String(decoding: try JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys]), as: UTF8.self))
@@ -149,13 +155,13 @@ enum Launch {
         let app = NSApplication.shared
         app.setActivationPolicy(.prohibited)
         let view = NSHostingView(rootView: root.environment(\.timeZone, TimeZone(identifier: "Asia/Shanghai")!)
-            .environment(\.locale, Locale(identifier: "zh_CN")))
+            .environment(\.locale, AppLanguage.locale))
         view.frame = NSRect(origin: .zero, size: size)
         let window = NSWindow(contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: false)
         window.contentView = view
         view.layoutSubtreeIfNeeded()
         guard let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else {
-            throw NSError(domain: "Render", code: 1, userInfo: [NSLocalizedDescriptionKey: "无法创建原生截图"])
+            throw NSError(domain: "Render", code: 1, userInfo: [NSLocalizedDescriptionKey: L("无法创建原生截图")])
         }
         view.cacheDisplay(in: view.bounds, to: rep)
         guard let data = rep.representation(using: .png, properties: [:]) else {

@@ -23,55 +23,55 @@ struct BankedResetPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {
             HStack {
-                Label("储备重置卡", systemImage: "rectangle.stack").font(.system(size: 15, weight: .semibold))
+                Label(L("储备重置卡"), systemImage: "rectangle.stack").font(.system(size: 15, weight: .semibold))
                 Spacer()
-                Text(model.bankedResets.map { "\($0.cards.filter { $0.expiresAt > model.now }.count) 张可用" } ?? "尚未读取")
+                Text(model.bankedResets.map { L("{{0}} 张可用", String(describing: $0.cards.filter { $0.expiresAt > model.now }.count)) } ?? L("尚未读取"))
                     .font(.system(size: 13, weight: .semibold)).foregroundStyle(ink.accent)
             }
             if let error = model.bankedError {
-                Text(error).font(.system(size: 12)).foregroundStyle(.orange).textSelection(.enabled)
+                Text(L(error)).font(.system(size: 12)).foregroundStyle(.orange).textSelection(.enabled)
             }
             if let stored = model.bankedResets, stored.accountKey == model.snapshot?.accountKey {
                 let base = plan(global: nil)
                 let projected = plan(global: globalTarget)
                 if !fresh {
-                    Text("重置卡或账户读数过期；刷新后再计算使用安排。")
+                    Text(L("重置卡或账户读数过期；刷新后再计算使用安排。"))
                         .font(.system(size: 12)).foregroundStyle(.orange)
                 }
                 if projected.entries.isEmpty {
-                    Text("当前没有可用的 Codex 全额重置卡。")
+                    Text(L("当前没有可用的 Codex 全额重置卡。"))
                         .font(.system(size: 12)).foregroundStyle(ink.secondary)
                 } else {
-                    Text("当前主额度剩余 \(number(model.mainWindow.map { 100 - $0.usedPercent }))%；另有 \(projected.entries.count) 次手动重置机会。每次恢复到 100%，不与剩余额度叠加。")
+                    Text(L("当前主额度剩余 {{0}}%；另有 {{1}} 次手动重置机会。每次恢复到 100%，不与剩余额度叠加。", String(describing: number(model.mainWindow.map { 100 - $0.usedPercent })), String(describing: projected.entries.count)))
                         .font(.system(size: 12)).foregroundStyle(ink.secondary).fixedSize(horizontal: false, vertical: true)
                     if let target = globalTarget {
-                        Text("情景：临时重置在 \(ResetTimeDisplay.shanghai(target)) 到账；它会覆盖当时余量，但不消耗未兑换的卡。")
+                        Text(L("情景：临时重置在 {{0}} 到账；它会覆盖当时余量，但不消耗未兑换的卡。", String(describing: L(ResetTimeDisplay.shanghai(target)))))
                             .font(.system(size: 12)).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
                     }
                     ForEach(Array(projected.entries.enumerated()), id: \.element.id) { index, entry in
                         VStack(alignment: .leading, spacing: 5) {
                             HStack(alignment: .firstTextBaseline) {
-                                Text("重置卡 \(index + 1)").font(.system(size: 12, weight: .semibold))
+                                Text(L("重置卡 {{0}}", String(describing: index + 1))).font(.system(size: 12, weight: .semibold))
                                 Spacer()
-                                Text("\(ResetTimeDisplay.shanghai(entry.card.expiresAt)) 到期")
+                                Text(L("{{0}} 到期", String(describing: L(ResetTimeDisplay.shanghai(entry.card.expiresAt)))))
                                     .font(.system(size: 12, design: .monospaced))
                             }
-                            Text("距最晚兑换还有 " + ResetTimeDisplay.remaining(until: entry.card.expiresAt, now: model.now))
+                            Text(L("距最晚兑换还有 ") + L(ResetTimeDisplay.remaining(until: entry.card.expiresAt, now: model.now)))
                                 .font(.system(size: 12, weight: .medium)).foregroundStyle(index == 0 ? .orange : ink.secondary)
                             if fresh {
                                 if let useAt = entry.estimatedRedeemAt {
-                                    Text("保持现速、每轮耗尽后用卡：预计 \(ResetTimeDisplay.shanghai(useAt)) 需兑换。")
+                                    Text(L("保持现速、每轮耗尽后用卡：预计 {{0}} 需兑换。", String(describing: L(ResetTimeDisplay.shanghai(useAt)))))
                                         .font(.system(size: 12)).foregroundStyle(ink.accent)
                                 } else if let balance = entry.remainingAtExpiry {
-                                    Text("按此情景，到期时主额度约剩 \(number(balance))%；等耗尽再用可能来不及，需提前决定是否兑换。")
+                                    Text(L("按此情景，到期时主额度约剩 {{0}}%；等耗尽再用可能来不及，需提前决定是否兑换。", String(describing: number(balance))))
                                         .font(.system(size: 12)).foregroundStyle(.orange)
                                 } else {
-                                    Text("速度样本不足，暂不估算兑换时机。")
+                                    Text(L("速度样本不足，暂不估算兑换时机。"))
                                         .font(.system(size: 12)).foregroundStyle(ink.secondary)
                                 }
                                 if globalTarget != nil, let baseline = base.entries.first(where: { $0.id == entry.id }), baseline != entry {
-                                    Text(baseline.estimatedRedeemAt.map { "若临时重置未到账：预计 \(ResetTimeDisplay.shanghai($0)) 需兑换。" }
-                                         ?? "若临时重置未到账：仍需留意到期前的兑换安排。")
+                                    Text(baseline.estimatedRedeemAt.map { L("若临时重置未到账：预计 {{0}} 需兑换。", String(describing: L(ResetTimeDisplay.shanghai($0)))) }
+                                         ?? L("若临时重置未到账：仍需留意到期前的兑换安排。"))
                                         .font(.system(size: 11)).foregroundStyle(ink.secondary)
                                 }
                             }
@@ -79,13 +79,13 @@ struct BankedResetPanel: View {
                             .padding(.vertical, 8)
                         if index < projected.entries.count - 1 { Divider().overlay(.white.opacity(0.04)) }
                     }
-                    Text("北京时间 UTC+8 · 到期是兑换截止，兑换后的额度有自己的周期。预测只看主额度并假定速度不变、按到期顺序手动用卡；兑换可能改变正常重置时间，刷新后以服务端为准。")
+                    Text(L("北京时间 UTC+8 · 到期是兑换截止，兑换后的额度有自己的周期。预测只看主额度并假定速度不变、按到期顺序手动用卡；兑换可能改变正常重置时间，刷新后以服务端为准。"))
                         .font(.system(size: compact ? 11 : 12)).foregroundStyle(ink.secondary).fixedSize(horizontal: false, vertical: true)
                 }
-                Text("账户接口更新 " + ResetTimeDisplay.shanghai(stored.sampledAt))
+                Text(L("账户接口更新 ") + L(ResetTimeDisplay.shanghai(stored.sampledAt)))
                     .font(.system(size: 11)).foregroundStyle(ink.secondary)
             }
-            Link("查看账户重置卡 ↗", destination: URL(string: "https://chatgpt.com/codex/settings/usage")!)
+            Link(L("查看账户重置卡 ↗"), destination: URL(string: "https://chatgpt.com/codex/settings/usage")!)
                 .font(.system(size: 12)).foregroundStyle(ink.blue)
         }.padding(compact ? 15 : 20).card()
     }

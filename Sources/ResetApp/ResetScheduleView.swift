@@ -41,9 +41,9 @@ struct ResetScheduleView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 11) {
             HStack(alignment: .firstTextBaseline) {
-                Text("重置安排").font(.system(size: 14, weight: .semibold))
+                Text(L("重置安排")).font(.system(size: 14, weight: .semibold))
                 Spacer()
-                Text("账户实测 · 全局站点信号")
+                Text(L("账户实测 · 全局站点信号"))
                     .font(.system(size: compact ? 9 : 12)).foregroundStyle(muted)
             }
 
@@ -51,15 +51,15 @@ struct ResetScheduleView: View {
                 HStack(spacing: 9) {
                     Image(systemName: "person.crop.circle.badge.clock")
                         .font(.system(size: 14)).foregroundStyle(blue).frame(width: 18)
-                    Text("本账户正常重置").font(.system(size: compact ? 11 : 13, weight: .semibold))
+                    Text(L("本账户正常重置")).font(.system(size: compact ? 11 : 13, weight: .semibold))
                     Spacer()
-                    statusChip(window?.resetsAt == nil ? "时间未知" : "服务器读数", tint: window?.resetsAt == nil ? muted : blue)
+                    statusChip(window?.resetsAt == nil ? L("时间未知") : L("服务器读数"), tint: window?.resetsAt == nil ? muted : blue)
                 }
                 HStack(alignment: .firstTextBaseline) {
-                    Text(window?.resetsAt.map { stamp($0) + " · 上海时间" } ?? "重置时间未知")
+                    Text(window?.resetsAt.map { stamp($0) + L(" · 上海时间") } ?? L("重置时间未知"))
                         .font(.system(size: 12, weight: .medium, design: .monospaced))
                     Spacer()
-                    Text("Codex 账户额度接口")
+                    Text(L("Codex 账户额度接口"))
                         .font(.system(size: compact ? 9 : 12)).foregroundStyle(muted)
                 }.padding(.leading, 27)
             }
@@ -70,18 +70,18 @@ struct ResetScheduleView: View {
                 HStack(spacing: 9) {
                     Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
                         .font(.system(size: 13)).foregroundStyle(.orange.opacity(0.9)).frame(width: 18)
-                    Text("本机观测到的周期变化").font(.system(size: compact ? 11 : 13, weight: .semibold))
+                    Text(L("本机观测到的周期变化")).font(.system(size: compact ? 11 : 13, weight: .semibold))
                     Spacer()
-                    statusChip("采样区间", tint: muted)
+                    statusChip(L("采样区间"), tint: muted)
                 }
                 if observedBoundaries.isEmpty {
-                    Text("尚无相邻周期变化记录；不回填首次采样之前的历史。")
+                    Text(L("尚无相邻周期变化记录；不回填首次采样之前的历史。"))
                         .font(.system(size: compact ? 9 : 12)).foregroundStyle(muted).padding(.leading, 27)
                 } else {
                     ForEach(Array(observedBoundaries.enumerated()), id: \.offset) { _, boundary in
                         observedBoundaryRow(previous: boundary.0, next: boundary.1)
                     }
-                    Text("观测区间不代表准确发生时刻或原因。")
+                    Text(L("观测区间不代表准确发生时刻或原因。"))
                         .font(.system(size: compact ? 9 : 11)).foregroundStyle(muted).padding(.leading, 27)
                 }
             }
@@ -92,34 +92,34 @@ struct ResetScheduleView: View {
                 HStack(spacing: 9) {
                     Image(systemName: "dot.radiowaves.left.and.right")
                         .font(.system(size: 13)).foregroundStyle(blue).frame(width: 18)
-                    Text("全局公告与历史").font(.system(size: compact ? 11 : 13, weight: .semibold))
+                    Text(L("全局公告与历史")).font(.system(size: compact ? 11 : 13, weight: .semibold))
                     Spacer()
                     Text(radarFreshness).font(.system(size: compact ? 9 : 12)).foregroundStyle(muted)
                 }
 
                 if [.upcoming, .observation].contains(extraResetAdvice.state), let deadline = extraResetAdvice.deadline {
                     HStack(alignment: .top, spacing: 8) {
-                        statusChip("活跃公告", tint: blue)
+                        statusChip(L("活跃公告"), tint: blue)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("\(extraResetAdvice.targetName) \(stamp(deadline)) · 北京时间")
+                            Text(L("{{0}} {{1}} · 北京时间", String(describing: extraResetAdvice.targetName), String(describing: stamp(deadline))))
                                 .font(.system(size: compact ? 10 : 12, weight: .medium, design: .monospaced))
-                            Text("还有 " + ResetTimeDisplay.remaining(until: deadline, now: now))
+                            Text(L("还有 ") + L(ResetTimeDisplay.remaining(until: deadline, now: now)))
                                 .font(.system(size: compact ? 10 : 12, weight: .semibold)).foregroundStyle(blue)
-                            Text(extraResetAdvice.conversionNote ?? "以本账户读数确认是否到账。")
+                            Text(extraResetAdvice.conversionNote ?? L("以本账户读数确认是否到账。"))
                                 .font(.system(size: compact ? 9 : 12)).foregroundStyle(muted)
                         }
                         Spacer(minLength: 0)
                         if let url = extraResetAdvice.sourceURL {
-                            Link("原文", destination: url).font(.system(size: compact ? 9 : 12)).foregroundStyle(blue)
+                            Link(L("原文"), destination: url).font(.system(size: compact ? 9 : 12)).foregroundStyle(blue)
                         }
                     }.padding(.leading, 27)
                 } else if extraResetAdvice.state == .recent {
-                    Text("站点刚确认额外重置；等待本账户读数确认到账。")
+                    Text(L("站点刚确认额外重置；等待本账户读数确认到账。"))
                         .font(.system(size: compact ? 9 : 12)).foregroundStyle(muted).padding(.leading, 27)
                 }
 
                 if events.isEmpty {
-                    Text(radar == nil ? "未知 · 尚无可用雷达时间线" : "暂无站点收录事件")
+                    Text(radar == nil ? L("未知 · 尚无可用雷达时间线") : L("暂无站点收录事件"))
                         .font(.system(size: compact ? 9 : 12)).foregroundStyle(muted).padding(.leading, 27)
                 } else {
                     VStack(alignment: .leading, spacing: 7) {
@@ -129,7 +129,7 @@ struct ResetScheduleView: View {
                         }
                     }
                 }
-                Text("来源：codex-reset.com · 全局事件不代表你的账户已到账。")
+                Text(L("来源：codex-reset.com · 全局事件不代表你的账户已到账。"))
                     .font(.system(size: compact ? 9 : 12)).foregroundStyle(muted).padding(.leading, 27)
             }
             .padding(11)
@@ -140,26 +140,26 @@ struct ResetScheduleView: View {
     }
 
     private var radarFreshness: String {
-        guard let radar else { return "来源未知" }
+        guard let radar else { return L("来源未知") }
         guard let updated = parseDate(radar.forecast.updated_at), updated <= now,
               now.timeIntervalSince(updated) <= 30 * 60,
-              now.timeIntervalSince(radar.fetchedAt) <= 30 * 60 else { return "站点数据过期" }
-        return "站点更新 \(stamp(updated))"
+              now.timeIntervalSince(radar.fetchedAt) <= 30 * 60 else { return L("站点数据过期") }
+        return L("站点更新 {{0}}", String(describing: stamp(updated)))
     }
 
     private func observedBoundaryRow(previous: ObservedCycle, next: ObservedCycle) -> some View {
         let scheduleChanged = !sameQuotaResetTime(previous.resetsAt, next.resetsAt)
         return VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
-                statusChip(next.initialUsedPercent < previous.finalUsedPercent ? "观测到额度回补" : "重置时间更新 / 重锚", tint: .orange)
-                if scheduleChanged { statusChip("重置时间字段变化", tint: muted) }
+                statusChip(next.initialUsedPercent < previous.finalUsedPercent ? L("观测到额度回补") : L("重置时间更新 / 重锚"), tint: .orange)
+                if scheduleChanged { statusChip(L("重置时间字段变化"), tint: muted) }
             }
-            Text("采样间隔：\(stamp(previous.lastSeen)) → \(stamp(next.firstSeen))")
+            Text(L("采样间隔：{{0}} → {{1}}", String(describing: stamp(previous.lastSeen)), String(describing: stamp(next.firstSeen))))
                 .font(.system(size: compact ? 9 : 12, design: .monospaced)).foregroundStyle(muted)
             HStack(spacing: 6) {
-                Text("已用 \(number(previous.finalUsedPercent))%")
+                Text(L("已用 {{0}}%", String(describing: number(previous.finalUsedPercent))))
                 Image(systemName: "arrow.right").font(.system(size: 8)).foregroundStyle(muted)
-                Text("已用 \(number(next.initialUsedPercent))%")
+                Text(L("已用 {{0}}%", String(describing: number(next.initialUsedPercent))))
                 Spacer(minLength: 0)
             }.font(.system(size: compact ? 9 : 12, design: .monospaced))
         }
@@ -175,16 +175,16 @@ struct ResetScheduleView: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(event.title).font(.system(size: compact ? 10 : 12, weight: .medium))
-                    statusChip(eventDate(event.date).map { $0 <= now ? "历史" : "公告时间" } ?? "时间未识别", tint: muted)
+                    statusChip(eventDate(event.date).map { $0 <= now ? L("历史") : L("公告时间") } ?? L("时间未识别"), tint: muted)
                 }
                 if let summary = event.summary {
                     Text(summary).font(.system(size: compact ? 10 : 12)).foregroundStyle(muted).lineLimit(3)
                 }
-                Text(event.announced_at.flatMap(parseDate).map { stamp($0) + " · 北京时间" } ?? displayDate(event.date)).font(.system(size: compact ? 9 : 12, design: .monospaced)).foregroundStyle(muted)
+                Text(event.announced_at.flatMap(parseDate).map { stamp($0) + L(" · 北京时间") } ?? displayDate(event.date)).font(.system(size: compact ? 9 : 12, design: .monospaced)).foregroundStyle(muted)
             }
             Spacer(minLength: 2)
             if let address = event.url, let url = URL(string: address), url.scheme == "https", url.host == "x.com" {
-                Link("原文", destination: url).font(.system(size: compact ? 9 : 12)).foregroundStyle(blue)
+                Link(L("原文"), destination: url).font(.system(size: compact ? 9 : 12)).foregroundStyle(blue)
             }
         }.padding(.leading, 27)
     }
@@ -210,7 +210,7 @@ struct ResetScheduleView: View {
 
     private func displayDate(_ value: String) -> String {
         if let instant = parseDate(value) { return stamp(instant) }
-        if eventDate(value) != nil { return value + " · 来源未提供时刻" }
-        return value + " · 时间未识别"
+        if eventDate(value) != nil { return value + L(" · 来源未提供时刻") }
+        return value + L(" · 时间未识别")
     }
 }
