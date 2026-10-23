@@ -1,7 +1,7 @@
-# Codex Jet 0.15.0
+# Codex Jet 0.16.0
 
-The app interface now supports Simplified Chinese and English. Choose a language from the dashboard or follow the macOS system setting. Quota, reset status, reminders, and charts use the selected language while preserving explicit stale, unknown, and estimated states.
+The 3D scene is replaced by a direct quota meter. Its fill length represents the latest valid observed balance, and changes smoothly only when a new account reading arrives. A single moving tick represents recent measured usage; it never changes the displayed balance between readings.
 
-The menu bar keeps its compact runway light, current quota, and countdown to the nearest eligible target. A fresh weekly reset, an official reset window or timed announcement, and an unexpired same-account banked card can provide a target; a site-only observation cannot. Targets more than 48 hours away display in days. The stale-reading tooltip now explains why the status bar hides current quota.
+A reset announcement draws a brief amber outline, then leaves it static as a signal. The outline does not imply a quota refill; only a real account reading can increase the bar. Missing or stale readings, zero pace, inactive views, and Reduce Motion stop continuous animation.
 
-The real-time flight visualization now uses an original procedural 3D paper plane. Its altitude follows observed remaining quota, and its glide speed follows recent measured usage. The quota gauge and runway light share the same pace state; estimates remain distinct from observed quota readings.
+The compact meter is used across the dashboard, pace panel, and reminder window. Simplified Chinese and English, quota status colors, reset targets, and local reminders remain available.

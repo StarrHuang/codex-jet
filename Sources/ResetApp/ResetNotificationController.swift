@@ -277,7 +277,7 @@ struct ResetReminderCard: View {
                 Image(systemName: "bell.badge.fill").foregroundStyle(.orange).font(.title2)
             }
             HStack(spacing: 14) {
-                PaperPlaneFlightView(remainingPercent: reminder.currentRemaining, ratePerHour: reminder.recentRate,
+                QuotaFlowView(remainingPercent: reminder.currentRemaining, ratePerHour: reminder.recentRate,
                                    announced: !reminder.isTest, animated: kickoff, runwayLight: runwayLight)
                     .frame(width: 108, height: 82)
                 Text(reminder.title).font(.system(size: 22, weight: .bold)).fixedSize(horizontal: false, vertical: true)

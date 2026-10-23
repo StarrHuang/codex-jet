@@ -281,7 +281,7 @@ struct Dashboard: View {
         case .unknown: L("还未取得有效的雷达数据，暂不判断是否有新公告。")
         }
         return HStack(spacing: 16) {
-            PaperPlaneFlightView(remainingPercent: model.liveRemainingPercent, ratePerHour: model.menuPace?.recentRatePerHour,
+            QuotaFlowView(remainingPercent: model.liveRemainingPercent, ratePerHour: model.menuPace?.recentRatePerHour,
                                announced: active, animated: active, runwayLight: model.menuRunwayLight)
                 .frame(width: 128, height: 86)
             VStack(alignment: .leading, spacing: 9) {

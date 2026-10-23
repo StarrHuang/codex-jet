@@ -35,7 +35,7 @@ See [deployment](docs/deployment.md) for updates and release packaging. See [ver
 - Local token activity by model and hour, based on Codex session usage records.
 - Optional banked-reset cards read from the current local account, with identity checks and manual-redemption scenarios.
 - An optional public global reset radar with third-party source, confidence, and update time shown separately from personal quota.
-- Reset reminders and a real-time 3D paper-plane flight visualization driven by observed quota and pace.
+- Reset reminders and a direct quota meter: fill length reflects the latest observed balance, one moving tick reflects recent measured usage, and a brief outline marks an announcement without implying a refill.
 
 The runway light is green when measured pace leaves a buffer, yellow within 10% of the rate needed to reach the target, red when pace is more than 10% faster than required or the quota is exhausted, and gray when readings or a valid target are unavailable. Eligible targets are a fresh weekly reset, an official reset window or timed announcement, or an unexpired banked card for the same account. A site-only observation does not create a countdown.
 
@@ -52,5 +52,3 @@ The global radar is fetched separately from `codex-reset.com`; those requests do
 - [codex-reset.com](https://codex-reset.com/) supplies the independent public global reset radar used by the app.
 - The compact weekly quota-card presentation was inspired by the Tokei app. No Tokei source code or artwork is included.
 - [CodexBar](https://github.com/steipete/CodexBar) informed the window-pace comparison and is cited as a source of product and implementation ideas. Codex Jet's implementation is independent.
-
-The paper-plane animation uses original procedural 3D geometry created for this project. The release does not include third-party aircraft imagery.

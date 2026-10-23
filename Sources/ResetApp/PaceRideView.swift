@@ -51,7 +51,7 @@ struct PaceRideView: View {
 
     var body: some View {
         HStack(spacing: compact ? 14 : 22) {
-            flight.frame(width: compact ? 245 : 290, height: compact ? 185 : 205)
+            flight.frame(width: compact ? 190 : 220, height: compact ? 96 : 105)
             VStack(alignment: .leading, spacing: compact ? 8 : 11) {
                 Text(L("近期实测 → {{0}}", String(describing: targetLabel))).font(.system(size: compact ? 10 : 12)).foregroundStyle(ink.secondary)
                 Text(title).font(.system(size: compact ? 15 : 19, weight: .semibold)).foregroundStyle(tint)
@@ -76,7 +76,7 @@ struct PaceRideView: View {
     }
 
     private var flight: some View {
-        PaperPlaneFlightView(remainingPercent: quotaRemaining,
+        QuotaFlowView(remainingPercent: quotaRemaining,
                            ratePerHour: pace?.state == .stale ? nil : pace?.recentRatePerHour,
                            stale: quotaStale, announced: resetAnnounced,
                            runwayLight: runwayLight ?? pace?.runwayLight ?? .unknown)
