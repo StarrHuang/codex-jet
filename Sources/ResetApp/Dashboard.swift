@@ -36,7 +36,7 @@ struct Dashboard: View {
     var sidebar: some View {
         VStack(alignment: .leading, spacing: 30) {
             HStack(spacing: 10) {
-                Image(systemName: "arrow.clockwise.circle.fill").font(.system(size: 30)).foregroundStyle(ink.accent)
+                QuotaLogo().frame(width: 32, height: 32)
                 VStack(alignment: .leading, spacing: 3) {
                     Text("CODEX RESET").font(.system(size: 13, weight: .bold, design: .monospaced))
                     Text(L("额度 · 节奏 · 重置")).font(.system(size: 9, design: .monospaced)).foregroundStyle(ink.secondary)

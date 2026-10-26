@@ -12,15 +12,19 @@ import ResetCore
     @Published var phase: ScenePhase = .active
     @Published var light: DeadlinePace.RunwayLight = .green
 }
+
 private struct MeterProof: View {
     @ObservedObject var input: MeterInput
+    var width: CGFloat = 560
+    var height: CGFloat = 160
     var body: some View {
         QuotaFlowView(remainingPercent: input.balance, ratePerHour: input.rate, stale: input.stale,
             announced: input.announced, animated: input.animated, runwayLight: input.light)
-            .frame(width: 520, height: 120).padding(20).background(ink.background)
+            .frame(width: width, height: height).background(ink.background)
             .environment(\.scenePhase, input.phase).preferredColorScheme(.dark)
     }
 }
+
 @main struct QuotaMotionProof {
     @MainActor static func main() async throws {
         let output = URL(fileURLWithPath: CommandLine.arguments.dropFirst().first ?? "/tmp/quota-flow-proof")
@@ -31,142 +35,187 @@ private struct MeterProof: View {
         host.frame = NSRect(x: 0, y: 0, width: 560, height: 160)
         let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
         window.contentView = host
-        func capture(_ name: String, measure: Bool = true) throws -> (png: Data, width: Int) {
+
+        func isRunway(_ color: NSColor) -> Bool {
+            let c = color.usingColorSpace(.deviceRGB)!
+            let r = c.redComponent, g = c.greenComponent, b = c.blueComponent
+            switch input.light {
+            case .green: return g > 0.60 && g > r * 1.18 && g > b * 1.10
+            case .red: return r > 0.60 && r > g * 1.45 && r > b * 1.45
+            case .yellow: return r > 0.70 && g > 0.48 && b < g * 0.72
+            case .unknown: return false
+            }
+        }
+        func isAnnouncement(_ color: NSColor) -> Bool {
+            let c = color.usingColorSpace(.deviceRGB)!
+            let r = c.redComponent, g = c.greenComponent, b = c.blueComponent
+            return r > 0.72 && g > 0.30 && g < 0.78 && b < 0.42 && r > g * 1.12
+        }
+        func capture(_ name: String) throws -> (png: Data, arcDegrees: Int, rimDegrees: Int) {
             host.layoutSubtreeIfNeeded()
             let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds)!
             host.cacheDisplay(in: host.bounds, to: rep)
             let png = rep.representation(using: .png, properties: [:])!
             try png.write(to: output.appendingPathComponent(name + ".png"))
-            guard measure else { return (png, 0) }
-            var maximum = 0
-            // Read the bar band, excluding the large percent and its exhausted color.
-            for y in (rep.pixelsHigh * 39 / 100)..<(rep.pixelsHigh / 2) {
-                var first: Int?, last: Int?
-                for x in (rep.pixelsWide / 30)..<(rep.pixelsWide * 29 / 30) {
-                    let c = rep.colorAt(x: x, y: y)!.usingColorSpace(.deviceRGB)!
-                    let r = c.redComponent, g = c.greenComponent, b = c.blueComponent
-                    let matches: Bool
-                    switch input.light {
-                    case .green: matches = g > 0.55 && g > r * 1.15 && g > b * 1.10
-                    case .red: matches = r > 0.55 && r > g * 1.4 && r > b * 1.4
-                    case .yellow: matches = r > 0.65 && g > 0.5 && b < g * 0.8
-                    case .unknown: matches = false
+
+            // The proof host is fixed at 560x160; the dial fills 152pt and sits at (76, 80).
+            // Probe along the colored ring center, with a small radial tolerance for antialiasing.
+            let centerX = rep.pixelsWide * 76 / 560
+            let centerY = rep.pixelsHigh * 80 / 160
+            let pixelScale = Double(min(rep.pixelsWide / 560, rep.pixelsHigh / 160))
+            let quotaRadius = pixelScale * 65.2
+            let announcementRadius = pixelScale * 72.0
+            func coverage(_ matcher: (NSColor) -> Bool, radius: Double) -> Int {
+                var count = 0
+                for degree in 0..<360 {
+                    let angle = Double(degree) * .pi / 180 - .pi / 2
+                    var hit = false
+                    for radialOffset in -2...2 {
+                        let r = radius + Double(radialOffset)
+                        let x = centerX + Int((cos(angle) * r).rounded())
+                        let y = centerY + Int((sin(angle) * r).rounded())
+                        if x >= 0, x < rep.pixelsWide, y >= 0, y < rep.pixelsHigh,
+                           matcher(rep.colorAt(x: x, y: y)!) { hit = true; break }
                     }
-                    if matches { if first == nil { first = x }; last = x }
+                    if hit { count += 1 }
                 }
-                if let first, let last { maximum = max(maximum, last - first + 1) }
+                return count
             }
-            return (png, maximum)
+            return (png, coverage(isRunway, radius: quotaRadius), coverage(isAnnouncement, radius: announcementRadius))
         }
-        try await Task.sleep(for: .milliseconds(200))
-        let before = try capture("01-quota-20")
+
+        try await Task.sleep(for: .milliseconds(150))
+        let twenty = try capture("01-quota-20")
         if CommandLine.arguments.contains("--reduce-motion") {
-            input.rate = 20
             input.balance = 90
             try await Task.sleep(for: .milliseconds(120))
             let first = try capture("reduced-first")
-            try await Task.sleep(for: .milliseconds(300))
+            try await Task.sleep(for: .milliseconds(250))
             let still = try capture("reduced-still")
-            precondition(first.png == still.png && first.width > before.width * 3,
-                         "Reduce Motion updates quota immediately and never loops at positive pace")
+            precondition(first.png == still.png && first.arcDegrees > twenty.arcDegrees * 3,
+                         "Reduce Motion applies observed balance immediately with no hand loop")
             input.announced = true
             try await Task.sleep(for: .milliseconds(100))
-            let announcement = try capture("reduced-announcement", measure: false)
+            let announcement = try capture("reduced-announcement")
             try await Task.sleep(for: .milliseconds(250))
-            let announcementStill = try capture("reduced-announcement-still", measure: false)
-            precondition(announcement.png == announcementStill.png, "Reduce Motion keeps a static announcement outline")
-            print("PASS: Reduce Motion displays quota and announcement immediately with no loops")
+            let announcementStill = try capture("reduced-announcement-still")
+            precondition(announcement.png == announcementStill.png && announcement.rimDegrees > 0,
+                         "Reduce Motion keeps the announcement rim static")
+            print("PASS: Reduce Motion applies quota immediately and keeps the hand and announcement static")
+            print(output.path)
             return
         }
         input.balance = 90
-        try await Task.sleep(for: .milliseconds(200))
+        try await Task.sleep(for: .milliseconds(150))
         let growing = try capture("02-refilling")
         try await Task.sleep(for: .milliseconds(500))
-        let full = try capture("03-quota-90")
-        try await Task.sleep(for: .milliseconds(200))
+        let ninety = try capture("03-quota-90")
+        try await Task.sleep(for: .milliseconds(180))
         let resting = try capture("04-resting")
-        precondition(growing.width > before.width && growing.width < full.width,
-                     "a real refill must visibly interpolate the quota bar width")
-        precondition(full.png == resting.png, "zero measured pace is static after refill")
-        precondition(abs(Double(full.width) / Double(before.width) - 4.5) < 0.10,
-                     "fill length must track 90 versus 20 percent")
+        precondition(growing.arcDegrees > twenty.arcDegrees && growing.arcDegrees < ninety.arcDegrees,
+                     "a real refill must smoothly interpolate the observed angular arc")
+        precondition(abs(Double(ninety.arcDegrees) / Double(twenty.arcDegrees) - 4.5) < 0.3,
+                     "colored angular coverage must track 90 versus 20 percent")
+        precondition(ninety.png == resting.png, "zero measured pace rests at a static hand")
+
+        input.announced = true
+        try await Task.sleep(for: .milliseconds(900))
+        let announcedNinety = try capture("quota-90-with-announcement")
+        precondition(abs(announcedNinety.arcDegrees - ninety.arcDegrees) <= 2 && announcedNinety.rimDegrees > 330,
+                     "the outer announcement rim stays distinct while the positive quota arc remains measurable")
+        input.announced = false
+        try await Task.sleep(for: .milliseconds(100))
+        let unannouncedNinety = try capture("quota-90-after-announcement")
+        precondition(unannouncedNinety.arcDegrees == announcedNinety.arcDegrees,
+                     "removing the announcement rim does not change observed quota coverage")
+
         input.balance = 25
         try await Task.sleep(for: .milliseconds(160))
         let falling = try capture("05-consuming")
         try await Task.sleep(for: .milliseconds(500))
-        let lower = try capture("06-quota-25")
-        precondition(falling.width < full.width && falling.width > lower.width, "consumption interpolates only after new observations")
-        input.rate = 20
+        let twentyFive = try capture("06-quota-25")
+        precondition(falling.arcDegrees < ninety.arcDegrees && falling.arcDegrees > twentyFive.arcDegrees,
+                     "consumption interpolates only after a new observed balance")
+
+        input.rate = 60
         try await Task.sleep(for: .milliseconds(150))
-        let flowing = try capture("07-flowing")
-        try await Task.sleep(for: .milliseconds(250))
-        let flowNext = try capture("08-flowing-next")
-        precondition(flowing.png != flowNext.png && abs(flowing.width - flowNext.width) <= 3,
-                     "a positive measured pace moves the tick without silently consuming displayed quota")
+        let handFirst = try capture("07-hand-moving")
+        try await Task.sleep(for: .milliseconds(350))
+        let handNext = try capture("08-hand-moving-next")
+        precondition(handFirst.png != handNext.png && abs(handFirst.arcDegrees - handNext.arcDegrees) <= 2,
+                     "positive measured pace moves the hand while the observed arc stays fixed")
+
         input.phase = .inactive
-        try await Task.sleep(for: .milliseconds(100))
+        try await Task.sleep(for: .milliseconds(80))
         let inactive = try capture("inactive")
-        try await Task.sleep(for: .milliseconds(200))
+        try await Task.sleep(for: .milliseconds(180))
         let inactiveNext = try capture("inactive-next")
-        precondition(inactive.png == inactiveNext.png, "inactive views stop motion")
+        precondition(inactive.png == inactiveNext.png, "inactive views stop hand motion")
         input.phase = .active
+        input.rate = 0
+        input.balance = 0
+        try await Task.sleep(for: .milliseconds(550))
+        let empty = try capture("empty")
+        precondition(empty.arcDegrees <= 3, "zero quota has no colored arc")
         input.balance = nil
+        input.rate = 60
         try await Task.sleep(for: .milliseconds(100))
         let unknown = try capture("unknown")
-        try await Task.sleep(for: .milliseconds(200))
+        try await Task.sleep(for: .milliseconds(180))
         let unknownNext = try capture("unknown-next")
-        precondition(unknown.width == 0 && unknown.png == unknownNext.png, "unknown quota has no colored fill or flow")
+        precondition(unknown.arcDegrees == 0 && unknown.png == unknownNext.png,
+                     "unknown quota is gray with no implied arc or hand movement")
         input.balance = 60
         input.stale = true
         try await Task.sleep(for: .milliseconds(100))
         let stale = try capture("stale")
-        try await Task.sleep(for: .milliseconds(200))
+        try await Task.sleep(for: .milliseconds(180))
         let staleNext = try capture("stale-next")
-        precondition(stale.width == 0 && stale.png == staleNext.png, "stale readings cannot imply current quota or pace")
+        precondition(stale.arcDegrees == 0 && stale.png == staleNext.png,
+                     "stale quota is gray with no implied arc or hand movement")
+
         input.stale = false
         input.balance = 0
         input.rate = 0
         input.light = .red
-        try await Task.sleep(for: .milliseconds(600))
-        let empty = try capture("empty")
+        try await Task.sleep(for: .milliseconds(550))
+        let zeroBeforeNotice = try capture("zero-before-notice")
         input.announced = true
         try await Task.sleep(for: .milliseconds(150))
-        let entering = try capture("announcement-enter", measure: false)
-        try await Task.sleep(for: .milliseconds(900))
-        let announced = try capture("announcement-settled", measure: false)
-        try await Task.sleep(for: .milliseconds(200))
-        let announcedRest = try capture("announcement-rest", measure: false)
-        precondition(entering.png != announced.png && announced.png == announcedRest.png,
-                     "an announcement sweeps once at zero quota, then stays visible and static")
-        precondition(empty.width <= 20, "an announcement never refills the quota bar")
+        let rimSweep = try capture("announcement-sweep")
+        try await Task.sleep(for: .milliseconds(850))
+        let rimSettled = try capture("announcement-settled")
+        try await Task.sleep(for: .milliseconds(180))
+        let rimRest = try capture("announcement-rest")
+        precondition(rimSweep.rimDegrees > 0 && rimSweep.rimDegrees < rimSettled.rimDegrees,
+                     "announcement rim sweeps once over about 0.8 seconds")
+        precondition(rimSettled.png == rimRest.png && rimSettled.arcDegrees == zeroBeforeNotice.arcDegrees,
+                     "announcement settles to a static rim without refilling quota")
         input.phase = .inactive
         try await Task.sleep(for: .milliseconds(60))
         input.phase = .active
         try await Task.sleep(for: .milliseconds(120))
-        let resumed = try capture("announcement-resumed", measure: false)
-        precondition(resumed.png == announced.png, "reactivating the app does not replay the same announcement")
+        let resumed = try capture("announcement-resumed")
+        precondition(resumed.png == rimSettled.png, "reactivating the app does not replay the same announcement")
         input.announced = false
-        print("PASS: observed quota fill interpolation, rate tick at stable fill, unknown/stale/inactive pause, finite announcement without false refill or replay")
-        if ProcessInfo.processInfo.environment["CODEXRESET_FLOW_PREVIEW"] == "1" {
-            var frames: [(String, Date)] = []
-            for index in 0..<150 {
-                if index == 8 { input.announced = true }
-                if index == 40 { input.balance = 100; input.announced = false; input.light = .green; input.rate = 2 }
-                if index == 80 { input.rate = 20; input.light = .yellow }
-                if index == 110 { input.balance = 20; input.light = .red }
-                if index == 140 { input.balance = 0 }
-                let name = String(format: "preview-%03d", index)
-                _ = try capture(name, measure: false)
-                frames.append((name, Date()))
-                try await Task.sleep(for: .milliseconds(50))
-            }
-            var manifest = "ffconcat version 1.0\n"
-            for i in frames.indices {
-                let duration = i + 1 < frames.count ? frames[i + 1].1.timeIntervalSince(frames[i].1) : 0.06
-                manifest += "file '\(frames[i].0).png'\nduration \(duration)\n"
-            }
-            try manifest.write(to: output.appendingPathComponent("preview.ffconcat"), atomically: true, encoding: .utf8)
-        }
+        input.balance = 60
+        input.rate = 60
+        input.animated = false
+        try await Task.sleep(for: .milliseconds(180))
+        let reducedFirst = try capture("reduced-first")
+        try await Task.sleep(for: .milliseconds(200))
+        let reducedStill = try capture("reduced-still")
+        precondition(reducedFirst.png == reducedStill.png,
+                     "disabled animation shows the observed balance immediately and stops the hand")
+        host.rootView = MeterProof(input: input, width: 108, height: 82)
+        host.frame = NSRect(x: 0, y: 0, width: 108, height: 82)
+        window.setContentSize(host.frame.size)
+        host.layoutSubtreeIfNeeded()
+        let compactRep = host.bitmapImageRepForCachingDisplay(in: host.bounds)!
+        host.cacheDisplay(in: host.bounds, to: compactRep)
+        try compactRep.representation(using: .png, properties: [:])!
+            .write(to: output.appendingPathComponent("compact-108x82.png"))
+        print("PASS: angular balance interpolation, measured-pace hand, paused/unknown/stale/zero states, and one-time announcement rim")
         print(output.path)
     }
 }

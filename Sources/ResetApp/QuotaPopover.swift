@@ -19,7 +19,7 @@ struct QuotaPopover: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
-                Image(systemName: "waveform.path").font(.system(size: 17)).foregroundStyle(blue)
+                QuotaLogo().frame(width: 21, height: 21)
                 Text("Codex Jet").font(.system(size: 15, weight: .semibold))
                 Spacer()
                 Text(L("额度驾驶舱")).font(.system(size: 10)).foregroundStyle(muted)

@@ -524,5 +524,5 @@
   "等待有效额度读数": "Waiting for a valid quota reading",
   "剩余额度 %.0f%%；近期实测消耗 %.1f 点/h": "%.0f%% quota remaining; recent measured usage %.1f pt/h",
   "剩余额度 %.0f%%": "%.0f%% quota remaining",
-  "填充长度表示当前剩余额度；流动刻度表示近期实测消耗。公告轮廓只作提示，不代表额度已经恢复。": "Fill length shows current quota remaining; the moving tick shows recent measured usage. An announcement outline is a signal, not a quota refill."
+  "时钟表示额度：彩色弧长代表当前剩余额度，指针速度代表近期实测消耗；它不表示实际时间。公告描边只作提示，不代表额度已经恢复。": "The clock represents quota: its colored arc shows the observed balance, and its hand speed shows recent measured usage. It does not show actual time. The announcement rim is a signal, not a quota refill."
 }

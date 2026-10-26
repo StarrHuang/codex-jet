@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/brand/app-icon.png" alt="Codex Jet app icon" width="112"></p>
+
 # Codex Jet — Usage & Reset
 
 Codex Jet is a native macOS app for watching Codex quota use, reset timing, and local token activity. It reads the existing Codex CLI sign-in on this Mac, keeps quota history locally, and can show the public global reset radar from [codex-reset.com](https://codex-reset.com/).
@@ -35,7 +37,7 @@ See [deployment](docs/deployment.md) for updates and release packaging. See [ver
 - Local token activity by model and hour, based on Codex session usage records.
 - Optional banked-reset cards read from the current local account, with identity checks and manual-redemption scenarios.
 - An optional public global reset radar with third-party source, confidence, and update time shown separately from personal quota.
-- Reset reminders and a direct quota meter: fill length reflects the latest observed balance, one moving tick reflects recent measured usage, and a brief outline marks an announcement without implying a refill.
+- Reset reminders and a quota clock: its colored arc shows the latest observed balance, while the hand's speed represents recent measured quota use. The clock does not show actual time, and only a new account reading changes the displayed balance.
 
 The runway light is green when measured pace leaves a buffer, yellow within 10% of the rate needed to reach the target, red when pace is more than 10% faster than required or the quota is exhausted, and gray when readings or a valid target are unavailable. Eligible targets are a fresh weekly reset, an official reset window or timed announcement, or an unexpired banked card for the same account. A site-only observation does not create a countdown.
 

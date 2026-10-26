@@ -1,6 +1,6 @@
 import Foundation
 
-/// Directly maps the latest usable remaining quota to a bar fill and measured flow speed.
+/// Maps usable remaining quota to the clock arc fraction and measured motion speed.
 public struct QuotaFlowState: Equatable, Sendable {
     /// The observed balance clamped to 0...100, or nil when missing, stale, or non-finite.
     public let remainingPercent: Double?

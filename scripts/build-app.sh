@@ -26,6 +26,7 @@ else
 fi
 rm -f "$app_path/Contents/Resources/roadster.png"
 cp Sources/ResetApp/Resources/en.json "$app_path/Contents/Resources/en.json"
+./scripts/build-icon.sh "$app_path/Contents/Resources"
 cat > "$app_path/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -34,6 +35,7 @@ cat > "$app_path/Contents/Info.plist" <<PLIST
 <key>CFBundleName</key><string>Codex Jet</string>
 <key>CFBundleDisplayName</key><string>Codex Jet</string>
 <key>CFBundleExecutable</key><string>CodexReset</string>
+<key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundleLocalizations</key><array><string>zh-Hans</string><string>en</string></array>
 <key>CFBundleDevelopmentRegion</key><string>zh-Hans</string>
 <key>CFBundlePackageType</key><string>APPL</string>
