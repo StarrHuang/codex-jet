@@ -32,12 +32,14 @@ See [deployment](docs/deployment.md) for updates and release packaging. See [ver
 ## What it shows
 
 - Current Codex quota windows, reset times, and history, with separate status for stale or missing readings.
-- A compact status-bar runway light, current quota, and countdown to the nearest eligible target; countdowns longer than 48 hours display in days, while forecast and adjustment details remain in the tooltip and pace panel.
+- A compact native quota logo, current balance, and countdown to the nearest eligible target; the logo uses the existing runway status color, and countdowns longer than 48 hours display in days.
+- A shared quota overview across the main window and compact views, using the existing nearest-target and measured-pace results. Announcements use concise summaries with supporting details available on expansion.
 - Measured recent pace and clearly labeled window-average estimates, with a forecast of remaining quota at reset.
 - Local token activity by model and hour, based on Codex session usage records.
 - Optional banked-reset cards read from the current local account, with identity checks and manual-redemption scenarios.
 - An optional public global reset radar with third-party source, confidence, and update time shown separately from personal quota.
 - Reset reminders and a quota clock: its colored arc shows the latest observed balance, while the hand's speed represents recent measured quota use. The clock does not show actual time, and only a new account reading changes the displayed balance.
+- The popover keeps the full quota-consumption curve visible by default, with its time range, legend, and change markers; quota history and token charts remain available.
 
 The runway light is green when measured pace leaves a buffer, yellow within 10% of the rate needed to reach the target, red when pace is more than 10% faster than required or the quota is exhausted, and gray when readings or a valid target are unavailable. Eligible targets are a fresh weekly reset, an official reset window or timed announcement, or an unexpired banked card for the same account. A site-only observation does not create a countdown.
 

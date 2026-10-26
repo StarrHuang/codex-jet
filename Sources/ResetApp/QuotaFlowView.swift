@@ -8,6 +8,7 @@ struct QuotaFlowView: View {
     var stale = false
     var announced = false
     var animated = true
+    var showsReadout = true
     var runwayLight: DeadlinePace.RunwayLight = .unknown
 
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
@@ -44,32 +45,41 @@ struct QuotaFlowView: View {
     var body: some View {
         GeometryReader { outer in
             let compact = outer.size.width < 140
-            let diameter = min(outer.size.height - (compact ? 2 : 8), outer.size.width * (compact ? 0.44 : 0.38))
-            HStack(spacing: compact ? 4 : 8) {
-                quotaClock(diameter: max(0, diameter))
-                    .frame(width: diameter, height: diameter)
-                VStack(alignment: .leading, spacing: compact ? 1 : 3) {
-                    Text(flow.remainingPercent.map { String(format: L("%.0f%%"), $0) } ?? "—")
-                        .font(.system(size: compact ? 18 : 29, weight: .semibold, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(readingColor)
-                        .contentTransition(.numericText())
-                        .lineLimit(1).minimumScaleFactor(0.72)
-                    if flow.remainingPercent != nil, let ratePerHour, ratePerHour.isFinite, ratePerHour >= 0 {
-                        Text(String(format: L("%.1f 点/h"), ratePerHour))
-                            .font(.system(size: compact ? 9 : 10, weight: compact ? .medium : .regular, design: .rounded))
-                            .monospacedDigit().foregroundStyle(compact ? Color.primary.opacity(0.68) : Color.secondary)
-                            .lineLimit(1).minimumScaleFactor(0.7)
+            let diameter = showsReadout
+                ? min(outer.size.height - (compact ? 2 : 8), outer.size.width * (compact ? 0.44 : 0.38))
+                : min(outer.size.height - 8, outer.size.width - 8)
+            Group {
+                if !showsReadout {
+                    quotaClock(diameter: max(0, diameter))
+                        .frame(width: diameter, height: diameter)
+                } else {
+                    HStack(spacing: compact ? 4 : 8) {
+                        quotaClock(diameter: max(0, diameter))
+                            .frame(width: diameter, height: diameter)
+                        VStack(alignment: .leading, spacing: compact ? 1 : 3) {
+                            Text(flow.remainingPercent.map { String(format: L("%.0f%%"), $0) } ?? "—")
+                                .font(.system(size: compact ? 18 : 29, weight: .semibold, design: .rounded))
+                                .monospacedDigit()
+                                .foregroundStyle(readingColor)
+                                .contentTransition(.numericText())
+                                .lineLimit(1).minimumScaleFactor(0.72)
+                            if flow.remainingPercent != nil, let ratePerHour, ratePerHour.isFinite, ratePerHour >= 0 {
+                                Text(String(format: L("%.1f 点/h"), ratePerHour))
+                                    .font(.system(size: compact ? 9 : 10, weight: compact ? .medium : .regular, design: .rounded))
+                                    .monospacedDigit().foregroundStyle(compact ? Color.primary.opacity(0.68) : Color.secondary)
+                                    .lineLimit(1).minimumScaleFactor(0.7)
+                            }
+                            if let statusText {
+                                Text(statusText)
+                                    .font(.system(size: compact ? 7 : 9, weight: .medium, design: .rounded))
+                                    .foregroundStyle(flow.remainingPercent == nil ? Color.secondary
+                                        : announced ? announcementColor : runwayLight.color)
+                                    .lineLimit(1).minimumScaleFactor(0.65)
+                            }
                     }
-                    if let statusText {
-                        Text(statusText)
-                            .font(.system(size: compact ? 7 : 9, weight: .medium, design: .rounded))
-                            .foregroundStyle(flow.remainingPercent == nil ? Color.secondary
-                                : announced ? announcementColor : runwayLight.color)
-                            .lineLimit(1).minimumScaleFactor(0.65)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }

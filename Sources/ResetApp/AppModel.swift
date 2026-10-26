@@ -25,8 +25,10 @@ final class AppModel: ObservableObject {
     private let tokenReader = LocalTokenUsageReader()
     let reminders = ResetNotificationController()
     private var monitor: Task<Void, Never>?
+    private let monitoringEnabled: Bool
+    init(monitoringEnabled: Bool = true) { self.monitoringEnabled = monitoringEnabled }
     func startMonitoring() {
-        guard monitor == nil else { return }
+        guard monitoringEnabled, monitor == nil else { return }
         monitor = Task {
             await reminders.start()
             await refresh()
@@ -98,12 +100,12 @@ final class AppModel: ObservableObject {
         return candidates.min { $0.date < $1.date }
     }
     var menuDeadline: Date? { menuDeadlineCandidate?.date }
-    private var menuDeadlineExplanation: String? {
+    var menuDeadlineExplanation: String? {
         guard let candidate = menuDeadlineCandidate else { return nil }
         if case .temporaryReset = candidate.source { return extraResetAdvice.targetName }
         return candidate.source.explanation
     }
-    private var menuDeadlineHours: String? {
+    var menuDeadlineHours: String? {
         guard let deadline = menuDeadline else { return nil }
         let hours = deadline.timeIntervalSince(now) / 3600
         if hours > 48 { return String(format: L("%.1f天"), hours / 24) }
@@ -118,7 +120,7 @@ final class AppModel: ObservableObject {
     var menuRunwayLight: DeadlinePace.RunwayLight { menuPace?.runwayLight ?? .unknown }
     var menuBarTitle: String {
         let current = liveRemainingPercent.map { number($0) + "%" } ?? "—%"
-        return menuRunwayLight.symbol + current + menuDeadlineSuffix
+        return current + menuDeadlineSuffix
     }
     var menuBarHelp: String {
         guard let window = mainWindow, let snapshot else { return L("尚无账户额度读数；点击打开额度面板。") }

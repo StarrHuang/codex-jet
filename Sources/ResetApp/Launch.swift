@@ -38,17 +38,31 @@ struct ResetDesktopApp: App {
     }
 }
 
-private struct QuotaMenuLabel: View {
-    @ObservedObject var model: AppModel
-    var body: some View {
-        Text(model.menuBarTitle).font(.system(size: 11)).monospacedDigit().help(model.menuBarHelp)
-    }
-}
-
 @main
 enum Launch {
     @MainActor static func main() async {
         let args = CommandLine.arguments
+        if let index = args.firstIndex(of: "--presentation-proof"), index + 1 < args.count {
+            do {
+                let stateIndex = args.firstIndex(of: "--proof-state")
+                let state = stateIndex.flatMap { $0 + 1 < args.count ? args[$0 + 1] : nil } ?? "normal"
+                let model = try PresentationProof.model(state: state)
+                if args.contains("--radar") { model.page = "radar" }
+                if args.contains("--tokens") { model.page = "tokens" }
+                if args.contains("--notifications") { model.page = "notifications" }
+                if args.contains("--menu-label") {
+                    let light = args.contains("--light")
+                    try renderView(QuotaMenuLabel(model: model).fixedSize().padding(6)
+                        .background(light ? Color.white : Color.black)
+                        .environment(\.colorScheme, light ? .light : .dark), destination: args[index + 1],
+                        size: NSSize(width: 140, height: 32))
+                } else {
+                    try render(model: model, destination: args[index + 1], popover: args.contains("--popover"), narrow: args.contains("--narrow"))
+                }
+                print("Rendered synthetic presentation (monitoring disabled): " + state)
+                exit(0)
+            } catch { fputs("Presentation proof failed: \(error.localizedDescription)\n", stderr); exit(1) }
+        }
         if let index = args.firstIndex(of: "--ride-proof"), index + 1 < args.count {
             do {
                 let stateIndex = args.firstIndex(of: "--ride-state")
@@ -61,6 +75,7 @@ enum Launch {
         }
         if args.contains("--menu-probe") {
             do {
+                NSApplication.shared.setActivationPolicy(.prohibited)
                 let model = AppModel()
                 let snapshot = try await Task.detached { try CodexAppServerClient().fetchSnapshot() }.value
                 model.snapshot = snapshot
@@ -70,8 +85,10 @@ enum Launch {
                 model.now = Date()
                 let font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
                 let width = (model.menuBarTitle as NSString).size(withAttributes: [.font: font]).width
+                let nativeWidth = NSHostingView(rootView: QuotaMenuLabel(model: model).fixedSize()).fittingSize.width
                 print(String(decoding: try JSONSerialization.data(withJSONObject:
-                    ["title": model.menuBarTitle, "textWidthPoints": width, "help": model.menuBarHelp],
+                    ["title": model.menuBarTitle, "textWidthPoints": width, "nativeLabelWidthPoints": nativeWidth,
+                     "logoWidthPoints": 15, "help": model.menuBarHelp],
                     options: [.prettyPrinted, .sortedKeys]), as: UTF8.self))
                 exit(0)
             } catch { fputs("Menu probe failed: \(error.localizedDescription)\n", stderr); exit(1) }
@@ -145,7 +162,7 @@ enum Launch {
         ResetDesktopApp.main()
     }
     @MainActor static func render(model: AppModel, destination: String, popover: Bool = false, narrow: Bool = false) throws {
-        let size = popover ? NSSize(width: 650, height: min(830, (NSScreen.main?.visibleFrame.height ?? 900) - 80)) : NSSize(width: narrow ? 1000 : 1260, height: model.page == "radar" ? 1000 : 1170)
+        let size = popover ? NSSize(width: 650, height: min(830, (NSScreen.main?.visibleFrame.height ?? 900) - 80)) : NSSize(width: narrow ? 1000 : 1260, height: narrow ? 760 : model.page == "radar" ? 1000 : 1170)
         try renderView(Group {
             if popover { QuotaPopover(model: model, openDashboard: {}) }
             else { Dashboard(model: model) }

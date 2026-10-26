@@ -6,8 +6,6 @@ struct QuotaPopover: View {
     @ObservedObject var model: AppModel
     let openDashboard: () -> Void
     @State private var rangeHours = 24.0
-    @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
-    private var reduceMotion: Bool { systemReduceMotion || CommandLine.arguments.contains("--reduce-motion") }
     private let blue = ink.accent
     private let muted = ink.secondary
     private var analysis: QuotaHistoryAnalysis? {
@@ -28,16 +26,24 @@ struct QuotaPopover: View {
             Divider().overlay(.white.opacity(0.06))
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    if let error = model.error { Text(L(error)).font(.system(size: 11)).foregroundStyle(.orange).textSelection(.enabled) }
                     if let window = model.mainWindow {
+                        QuotaOverview(model: model, compact: true)
+                        if let error = model.error { Text(L(error)).font(.system(size: 12)).foregroundStyle(.orange).textSelection(.enabled) }
                         TemporaryResetBanner(advice: model.extraResetAdvice, pace: model.temporaryResetPace,
                                              window: window, now: model.now,
-                                             observationError: model.radar?.observationError, compact: true, bankedCount: model.usableBankedCount, runwayLight: model.menuRunwayLight)
-                        quotaCard(window)
+                                             observationError: model.radar?.observationError, compact: true,
+                                             bankedCount: model.usableBankedCount, runwayLight: model.menuRunwayLight)
+                        if [.waiting, .unknown].contains(model.extraResetAdvice.state)
+                            || (model.extraResetAdvice.state == .stale && model.extraResetAdvice.summary == nil && model.extraResetAdvice.announcementAt == nil) {
+                            extraResetCard
+                        }
+                        historyChart(window)
+                        changes
                         BankedResetPanel(model: model, compact: true)
                         ResetScheduleView(window: window, radar: model.radar, now: model.now,
-                                          history: model.history, accountKey: model.snapshot?.accountKey, compact: true)
-                        extraResetCard
+                                          history: model.history, accountKey: model.snapshot?.accountKey,
+                                          compact: true, quotaReadingFresh: model.liveRemainingPercent != nil)
+                        historicalCycles
                         if !model.secondaryWindows.isEmpty {
                             DisclosureGroup {
                                 ForEach(model.secondaryWindows) { auxiliary in
@@ -48,9 +54,8 @@ struct QuotaPopover: View {
                                     .font(.system(size: 10)).foregroundStyle(muted)
                             }.tint(muted)
                         }
-                        historyChart(window)
-                        changes
                     } else {
+                        if let error = model.error { Text(L(error)).font(.system(size: 12)).foregroundStyle(.orange).textSelection(.enabled) }
                         TemporaryResetBanner(advice: model.extraResetAdvice, pace: model.temporaryResetPace,
                                              window: nil, now: model.now,
                                              observationError: model.radar?.observationError, compact: true, bankedCount: model.usableBankedCount, runwayLight: model.menuRunwayLight)
@@ -59,7 +64,8 @@ struct QuotaPopover: View {
                             Text(L("从真实账户读数开始采样，不填充过去历史。")).font(.system(size: 12)).foregroundStyle(muted)
                         }.padding(20).popoverCard(blue)
                         ResetScheduleView(window: nil, radar: model.radar, now: model.now,
-                                          history: model.history, accountKey: model.snapshot?.accountKey, compact: true)
+                                          history: model.history, accountKey: model.snapshot?.accountKey,
+                                          compact: true, quotaReadingFresh: model.liveRemainingPercent != nil)
                     }
                     HourlyTokenPanel(report: model.tokenReport, loading: model.tokensLoading,
                                      error: model.tokenError, compact: true)
@@ -88,82 +94,45 @@ struct QuotaPopover: View {
         .environment(\.timeZone, TimeZone(identifier: "Asia/Shanghai")!)
         .environment(\.locale, AppLanguage.locale)
     }
-    func quotaCard(_ window: QuotaWindow) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text(window.durationMinutes == 10080 ? L("Codex 周额度") : L("Codex 整体额度")).font(.system(size: 18, weight: .bold)).foregroundStyle(blue)
-                Spacer()
-                Text(countdown(window.resetsAt, now: model.now) + L(" 后重置")).font(.system(size: 11, weight: .medium)).foregroundStyle(muted)
-            }
-            HStack(spacing: 14) {
-                GeometryReader { proxy in
-                    ZStack(alignment: .leading) { Capsule().fill(.white.opacity(0.1)); Capsule().fill(blue).frame(width: proxy.size.width * (100 - window.usedPercent) / 100) }
-                }.frame(height: 7)
-                Text(L("剩余 {{0}}%", String(describing: number(100 - window.usedPercent)))).font(.system(size: 12, weight: .semibold)).fixedSize()
-            }
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(L("当前剩余")).font(.system(size: 11)).foregroundStyle(muted)
-                    HStack(alignment: .firstTextBaseline, spacing: 3) { Text(String(format: "%.1f", 100 - window.usedPercent)).font(.system(size: 46, weight: .medium, design: .rounded)).monospacedDigit().contentTransition(reduceMotion ? .identity : .numericText()); Text("%").font(.system(size: 19)).foregroundStyle(muted) }
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 6) {
-                    Text(L("正常重置 · 上海时间")).font(.system(size: 10)).foregroundStyle(muted)
-                    Text(window.resetsAt.map(stamp) ?? L("未知")).font(.system(size: 13, weight: .semibold, design: .monospaced))
-                    if let pace = model.weeklyPace, let expected = pace.expectedUsedPercent {
-                        Text(L("窗口已过 {{0}}% · 用量 {{1}}%", String(describing: number(expected)), String(describing: number(window.usedPercent)))).font(.system(size: 10)).foregroundStyle(muted)
-                    }
-                }
-            }
-            if !model.hasTemporaryTarget {
-                PaceRideView(pace: model.normalDeadlinePace, compact: true, bankedCount: model.usableBankedCount, quotaRemaining: model.liveRemainingPercent, runwayLight: model.menuRunwayLight)
-            }
-
-            Divider().overlay(.white.opacity(0.08))
-            Text(L("过去几个周期")).font(.system(size: 12, weight: .semibold))
+    var historicalCycles: some View {
+        DisclosureGroup(L("过去几个额度周期")) {
             let previous = Array((analysis?.cycles ?? []).filter { !$0.isCurrent && ($0.initialUsedPercent > 0 || $0.finalUsedPercent > 0) }.suffix(3).reversed())
             if previous.isEmpty {
-                Text(L("还未观测到过去周期；已开始记录本周期，不补造历史。")).font(.system(size: 10)).foregroundStyle(muted)
+                Text(L("还未观测到过去周期；已开始记录本周期，不补造历史。"))
+                    .font(.system(size: 12)).foregroundStyle(muted)
             } else {
-                ForEach(previous, id: \.id) { cycle in
-                    HStack(spacing: 12) {
-                        Text("\(shortDate(cycle.firstSeen)) → \(shortDate(cycle.lastSeen))").font(.system(size: 10, design: .monospaced))
-                        Text(L("观测 {{0}}", String(describing: span(cycle.lastSeen.timeIntervalSince(cycle.firstSeen))))).font(.system(size: 9)).foregroundStyle(muted)
-                        GeometryReader { proxy in
-                            Capsule().fill(blue.opacity(0.6)).frame(width: proxy.size.width * cycle.observedConsumptionPercent / 100)
-                        }.frame(height: 6)
-                        Text(L("增用 {{0}}%", String(describing: number(cycle.observedConsumptionPercent)))).font(.system(size: 10, weight: .medium)).fixedSize()
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(previous, id: \.id) { cycle in
+                        HStack(spacing: 12) {
+                            Text("\(shortDate(cycle.firstSeen)) → \(shortDate(cycle.lastSeen))")
+                                .font(.system(size: 12, design: .monospaced))
+                            Text(L("观测 {{0}}", String(describing: span(cycle.lastSeen.timeIntervalSince(cycle.firstSeen)))))
+                                .font(.system(size: 12)).foregroundStyle(muted)
+                            GeometryReader { proxy in
+                                Capsule().fill(blue.opacity(0.6)).frame(width: proxy.size.width * cycle.observedConsumptionPercent / 100)
+                            }.frame(height: 6)
+                            Text(L("增用 {{0}}%", String(describing: number(cycle.observedConsumptionPercent))))
+                                .font(.system(size: 12, weight: .medium)).fixedSize()
+                        }
                     }
+                    Text(L("记录为已观测区间；回补或重锚会分段，区间长度可能不同。"))
+                        .font(.system(size: 12)).foregroundStyle(muted)
                 }
-                Text(L("记录为已观测区间；回补或重锚会分段，区间长度可能不同。")).font(.system(size: 9)).foregroundStyle(muted)
             }
-        }.padding(18).popoverCard(blue)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.55), value: window.usedPercent)
+        }.font(.system(size: 12, weight: .medium)).tint(muted)
     }
-    var paceDetail: String {
-        guard let pace = model.weeklyPace else { return L("等待有效的窗口读数。") }
-        switch pace.state {
-        case .ahead:
-            return L("按本周期均速，预计提前 {{0}} 天用尽。放到约 {{1}}× 均速可撑到重置。", String(describing: String(format: "%.1f", (pace.hoursEarly ?? 0) / 24)), String(describing: String(format: "%.1f", pace.safeSpeedMultiplier ?? 0)))
-        case .surplus: return L("按本周期均速，重置时约剩 {{0}}%。把想做的任务蹬起来！", String(describing: number(pace.projectedRemainingAtReset)))
-        case .balanced: return L("用量与窗口时间基本同步；这是本周期均速估算。")
-        case .exhausted: return L("等正常重置，或先核对额外重置是否到账。")
-        case .stale: return L("最新额度读数过期，刷新后再判断节奏。")
-        case .waitingForReset: return L("倒计时已到，等待新读数确认额度恢复。")
-        case .unknown: return L("窗口刚开始或时间信息不足，暂不推断节奏。")
-        }
-    }
+
     var extraResetCard: some View {
         let advice = ExtraResetAdvice.evaluate(model.radar, now: model.now)
         let title: String = switch advice.state {
-        case .upcoming: L("额外重置在路上，使劲蹬！")
+        case .upcoming: L("额外重置窗口已公布")
         case .observation: L("临时重置目标正在观察中")
         case .announced: L("临时重置已有公告，时间未知")
         case .elapsed: L("公告目标时间已过，等账户读数确认")
         case .recent: L("站点刚确认额外重置，先看账户是否到账")
         case .waiting: L("额外重置：等待新的公告信号")
-        case .stale: L("额外重置：雷达过期，先刷新")
-        case .unknown: L("额外重置：等有效的雷达数据")
+        case .stale: L("额外重置雷达已过期")
+        case .unknown: L("额外重置状态未知")
         }
         let deadlineDetail: String? = switch advice.state {
         case .upcoming: advice.deadline.map { L("站点窗口截止 {{0}}；到账前留好正常额度。", String(describing: stamp($0))) }
@@ -178,8 +147,8 @@ struct QuotaPopover: View {
         return HStack(alignment: .top, spacing: 9) {
             Image(systemName: "dot.radiowaves.left.and.right").foregroundStyle(blue)
             VStack(alignment: .leading, spacing: 5) {
-                Text(title).font(.system(size: 11, weight: .medium))
-                if let deadlineDetail { Text(deadlineDetail).font(.system(size: 9)).foregroundStyle(muted) }
+                Text(title).font(.system(size: 12, weight: .medium))
+                if let deadlineDetail { Text(deadlineDetail).font(.system(size: 12)).foregroundStyle(muted) }
             }
             Spacer()
         }.padding(.horizontal, 4)

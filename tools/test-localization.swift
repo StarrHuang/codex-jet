@@ -15,7 +15,7 @@ import ResetCore
             QuotaWindow(id: "codex:primary", bucketID: "codex", label: "Codex", usedPercent: 60,
                         durationMinutes: 10080, resetsAt: now.addingTimeInterval(60 * 3600))
         ])
-        precondition(model.menuBarTitle == (english ? "⚪️40% 2.5d" : "⚪️40% 2.5天"))
+        precondition(model.menuBarTitle == (english ? "40% 2.5d" : "40% 2.5天"))
         let duration = L(ResetTimeDisplay.remaining(until: now.addingTimeInterval(5500), now: now))
         let date = L(ResetTimeDisplay.shanghai(now))
         let warning = L("14 个近期日志只有累计计数，没有逐次增量记录，未换算为小时用量。")

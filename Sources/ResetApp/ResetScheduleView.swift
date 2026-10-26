@@ -9,6 +9,7 @@ struct ResetScheduleView: View {
     var history: [QuotaSnapshot] = []
     var accountKey: String? = nil
     var compact = false
+    var quotaReadingFresh = true
 
     private let blue = Color(red: 0.39, green: 0.67, blue: 0.98)
     private let muted = ink.secondary
@@ -51,9 +52,11 @@ struct ResetScheduleView: View {
                 HStack(spacing: 9) {
                     Image(systemName: "person.crop.circle.badge.clock")
                         .font(.system(size: 14)).foregroundStyle(blue).frame(width: 18)
-                    Text(L("本账户正常重置")).font(.system(size: compact ? 11 : 13, weight: .semibold))
+                    Text(quotaReadingFresh ? L("本账户正常重置") : L("上次记录的正常重置"))
+                        .font(.system(size: compact ? 11 : 13, weight: .semibold))
                     Spacer()
-                    statusChip(window?.resetsAt == nil ? L("时间未知") : L("服务器读数"), tint: window?.resetsAt == nil ? muted : blue)
+                    statusChip(window?.resetsAt == nil ? L("时间未知") : quotaReadingFresh ? L("服务器读数") : L("上次记录"),
+                               tint: window?.resetsAt != nil && quotaReadingFresh ? blue : muted)
                 }
                 HStack(alignment: .firstTextBaseline) {
                     Text(window?.resetsAt.map { stamp($0) + L(" · 上海时间") } ?? L("重置时间未知"))

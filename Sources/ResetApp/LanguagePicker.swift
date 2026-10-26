@@ -9,7 +9,7 @@ struct LanguagePicker: View {
                 Text(L("跟随系统")).tag("system")
                 Text("中文").tag("zh-Hans")
                 Text("English").tag("en")
-            }.pickerStyle(.menu).font(.system(size: 11))
+            }.pickerStyle(.menu).labelsHidden().font(.system(size: 11))
         }
     }
 }
