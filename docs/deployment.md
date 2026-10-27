@@ -1,4 +1,4 @@
-# Install and release
+# Codex Usage Monitor: install and update Codex Jet
 
 Codex Jet targets macOS 14 or later. The universal release supports Apple Silicon and Intel Macs. It uses ad-hoc code signing and is not notarized with an Apple Developer ID.
 

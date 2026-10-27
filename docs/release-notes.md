@@ -1,4 +1,6 @@
-# Codex Jet 0.18.0
+# Codex Jet 0.18.0 — Codex Usage & Tibo Reset Monitor
+
+A native macOS Codex usage monitor with hourly model token statistics, quota burn-rate forecasts, and Tibo reset alerts from codex-reset.com.
 
 The main window and compact quota views now share an overview of the current balance, nearest eligible reset target, and measured pace. It uses the existing deadline and pace results; quota forecasting and target selection are unchanged.
 
