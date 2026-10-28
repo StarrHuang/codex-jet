@@ -88,3 +88,5 @@ Codex Jet is an independent community project, not affiliated with or endorsed b
 - [codex-reset.com](https://codex-reset.com/) supplies the independent public global reset radar. Thank you for making the reset signals and timeline available.
 - The compact weekly quota-card presentation was inspired by the Tokei app. No Tokei source code or artwork is included.
 - [CodexBar](https://github.com/steipete/CodexBar) informed the window-pace comparison and provided product and implementation ideas. Codex Jet's implementation is independent.
+
+The optional iPhone pairing feature is a source preview; see [iPhone reminder integration](docs/iphone-reminders.md) for its current inbox-only limits.

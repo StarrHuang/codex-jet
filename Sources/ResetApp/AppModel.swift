@@ -24,12 +24,14 @@ final class AppModel: ObservableObject {
     @Published var tokenError: String?
     private let tokenReader = LocalTokenUsageReader()
     let reminders = ResetNotificationController()
+    let phone = PocketSyncController()
     private var monitor: Task<Void, Never>?
     private let monitoringEnabled: Bool
     init(monitoringEnabled: Bool = true) { self.monitoringEnabled = monitoringEnabled }
     func startMonitoring() {
         guard monitoringEnabled, monitor == nil else { return }
         monitor = Task {
+            phone.restore()
             await reminders.start()
             await refresh()
             var lastRefresh = Date()
@@ -200,6 +202,7 @@ final class AppModel: ObservableObject {
             // Publish only a successfully fetched account. Old account history never mixes in.
             if snapshot?.accountKey != live.accountKey { bankedResets = nil; bankedError = nil }
             snapshot = live
+            await phone.observeAccount(live.accountKey)
             if !live.windows.contains(where: { $0.id == selectedWindowID }) {
                 selectedWindowID = live.windows.first(where: { $0.bucketID == "codex" && $0.durationMinutes == 10080 })?.id
                     ?? live.windows.first(where: { $0.bucketID == "codex" })?.id
@@ -233,6 +236,10 @@ final class AppModel: ObservableObject {
             bankedResets: bankedError == nil ? bankedResets : nil)
             ?? ResetReminder.banked(bankedError == nil ? bankedResets : nil, accountKey: snapshot?.accountKey, now: currentTime)
         await reminders.reconcile(reminder, now: currentTime, runwayLight: menuRunwayLight)
+        if error == nil {
+            await phone.reconcile(snapshot: snapshot, history: history,
+                banked: bankedError == nil ? bankedResets : nil, now: currentTime)
+        }
     }
     func refreshTokens() async {
         guard !tokensLoading else { return }

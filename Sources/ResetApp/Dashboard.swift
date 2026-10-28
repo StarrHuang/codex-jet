@@ -26,6 +26,7 @@ struct Dashboard: View {
                         HourlyTokenPanel(report: model.tokenReport, loading: model.tokensLoading, error: model.tokenError)
                     }
                     else if model.page == "notifications" {
+                        PocketPairingSettings(controller: model.phone, model: model)
                         ResetNotificationSettings(controller: model.reminders)
                     }
                     else { dashboard }

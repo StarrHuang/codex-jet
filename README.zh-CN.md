@@ -61,3 +61,5 @@ Codex Jet 是独立社区项目，与 OpenAI、Tibo、codex-reset.com 无隶属�
 - 感谢 [codex-reset.com](https://codex-reset.com/zh/) 提供公共全局重置雷达、信号与时间线。
 - 参考 Tokei 的紧凑额度卡片呈现；不包含 Tokei 源码或美术素材。
 - 参考 [CodexBar](https://github.com/steipete/CodexBar) 的周期用量节奏比较和产品思路，当前实现独立编写。
+
+手机配对功能目前是源码预览，使用服务器收件箱验证；详见 [iPhone 提醒接入说明](docs/iphone-reminders.md)，后台推送尚未接通。
