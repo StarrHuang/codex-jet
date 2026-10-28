@@ -273,10 +273,10 @@ final class AppModel: ObservableObject {
 
 let ink = ColorTokens()
 struct ColorTokens {
-    let background = SwiftUI.Color(red: 0.055, green: 0.068, blue: 0.078)
-    let panel = SwiftUI.Color(red: 0.092, green: 0.109, blue: 0.119)
-    let secondary = SwiftUI.Color(red: 0.64, green: 0.69, blue: 0.70)
-    let accent = SwiftUI.Color(red: 0.53, green: 0.91, blue: 0.72)
-    let blue = SwiftUI.Color(red: 0.44, green: 0.72, blue: 0.98)
+    let background = SwiftUI.Color(red: 0.065, green: 0.077, blue: 0.086)
+    let panel = SwiftUI.Color(red: 0.105, green: 0.123, blue: 0.133)
+    let secondary = SwiftUI.Color(red: 0.70, green: 0.75, blue: 0.76)
+    let accent = SwiftUI.Color(red: 0.55, green: 0.91, blue: 0.74)
+    let blue = SwiftUI.Color(red: 0.50, green: 0.76, blue: 0.99)
 }
 import SwiftUI

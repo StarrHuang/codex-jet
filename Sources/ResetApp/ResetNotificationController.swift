@@ -291,7 +291,7 @@ struct ResetReminderCard: View {
                         VStack(alignment: .leading, spacing: 6) {
                             Text(countdown(until: deadline, now: timeline.date))
                                 .font(.system(size: 22, weight: .semibold, design: .rounded))
-                                .monospacedDigit().foregroundStyle(.orange)
+                                .monospacedDigit().foregroundStyle(Color(red: 1.0, green: 0.76, blue: 0.42))
                             Text(L("目标 · {{0}} 上海时间", String(describing: ResetReminder.dateText(deadline))))
                                 .font(.system(size: 12)).foregroundStyle(ink.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -299,7 +299,8 @@ struct ResetReminderCard: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(14)
-                    .background(.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+                    .background(Color(red: 0.18, green: 0.125, blue: 0.065), in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.orange.opacity(0.28), lineWidth: 1))
                 }
             } else {
                 QuotaFlowView(remainingPercent: reminder.currentRemaining, ratePerHour: reminder.recentRate,
@@ -311,7 +312,7 @@ struct ResetReminderCard: View {
                     .foregroundStyle(reminder.isTest ? ink.secondary : runwayLight.color)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Text(reminder.detail).font(.system(size: 12)).foregroundStyle(.white.opacity(0.78))
+            Text(reminder.detail).font(.system(size: 12)).foregroundStyle(.white.opacity(0.86))
                 .lineSpacing(5).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 10) {
                 Button(action: open) {
@@ -326,7 +327,7 @@ struct ResetReminderCard: View {
                 .font(.system(size: 11)).foregroundStyle(ink.secondary)
         }.padding(22).frame(width: 510, alignment: .leading)
             .background(ink.background)
-            .overlay(alignment: .top) { Rectangle().fill(.orange).frame(height: 3) }
+            .overlay(alignment: .top) { Rectangle().fill(Color(red: 1.0, green: 0.64, blue: 0.25)).frame(height: 3) }
             .foregroundStyle(.white).preferredColorScheme(.dark)
             .task(id: reminder.id) {
                 guard !reduceMotion else { kickoff = false; return }

@@ -110,7 +110,7 @@ struct HourlyTokenPanel: View {
             Picker(L("显示范围"), selection: $rangeHours) {
                 Text(L("24 小时")).tag(24)
                 Text(L("7 天")).tag(168)
-            }.pickerStyle(.segmented).labelsHidden().frame(width: compact ? 145 : 185)
+            }.pickerStyle(.segmented).labelsHidden().tint(ink.accent).frame(width: compact ? 145 : 185)
         }
     }
 
@@ -133,15 +133,15 @@ struct HourlyTokenPanel: View {
                     .foregroundStyle(by: .value(L("模型"), row.model))
                 }
                 RuleMark(x: .value(L("选中小时"), selected))
-                    .foregroundStyle(.white.opacity(0.38))
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                    .foregroundStyle(.white.opacity(0.62))
+                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
             }
             .chartXScale(domain: startHour...endHour.addingTimeInterval(3600))
             .chartForegroundStyleScale(domain: modelNames, range: modelNames.map(modelColor))
             .chartLegend(.hidden)
             .chartXAxis {
                 AxisMarks(values: .automatic(desiredCount: compact ? 4 : (rangeHours > 24 ? 7 : 8))) { value in
-                    AxisGridLine().foregroundStyle(.white.opacity(0.035))
+                    AxisGridLine().foregroundStyle(.white.opacity(0.065))
                     AxisValueLabel {
                         if let date = value.as(Date.self) {
                             Text(axisLabel(date)).font(.system(size: compact ? 8 : 9, design: .monospaced)).foregroundStyle(ink.secondary)
@@ -151,7 +151,7 @@ struct HourlyTokenPanel: View {
             }
             .chartYAxis {
                 AxisMarks(position: .leading, values: .automatic(desiredCount: compact ? 3 : 4)) { value in
-                    AxisGridLine().foregroundStyle(.white.opacity(0.045))
+                    AxisGridLine().foregroundStyle(.white.opacity(0.08))
                     AxisValueLabel {
                         if let number = value.as(Int64.self) {
                             Text(shortTokens(number)).font(.system(size: 9, design: .monospaced)).foregroundStyle(ink.secondary)
@@ -172,8 +172,8 @@ struct HourlyTokenPanel: View {
         return LazyVGrid(columns: [GridItem(.adaptive(minimum: compact ? 115 : 145), alignment: .leading)], alignment: .leading, spacing: 7) {
             ForEach(modelNames, id: \.self) { model in
                 HStack(spacing: 6) {
-                    Circle().fill(modelColor(model)).frame(width: 7, height: 7)
-                    Text(model).font(.system(size: compact ? 10 : 12)).lineLimit(1).help(model)
+                    Circle().fill(modelColor(model)).frame(width: 8, height: 8)
+                    Text(model).font(.system(size: compact ? 10 : 12, weight: .medium)).lineLimit(1).help(model)
                 }.foregroundStyle(ink.secondary)
             }
         }

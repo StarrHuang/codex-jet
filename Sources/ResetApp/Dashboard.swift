@@ -268,7 +268,7 @@ struct Dashboard: View {
             HStack {
                 VStack(alignment: .leading, spacing: 5) { Text(L("额度消耗曲线")).font(.system(size: 15, weight: .semibold)); Text(L("{{0}} · 当前周期 · 已用百分比", String(describing: windowDisplayName(window)))).font(.system(size: 11)).foregroundStyle(ink.secondary) }
                 Spacer()
-                Picker(L("显示范围"), selection: $model.horizonHours) { Text(L("6 小时")).tag(6.0); Text(L("24 小时")).tag(24.0); Text(L("7 天")).tag(168.0) }.pickerStyle(.segmented).labelsHidden().frame(width: 215)
+                Picker(L("显示范围"), selection: $model.horizonHours) { Text(L("6 小时")).tag(6.0); Text(L("24 小时")).tag(24.0); Text(L("7 天")).tag(168.0) }.pickerStyle(.segmented).labelsHidden().tint(ink.accent).frame(width: 215)
             }
             Chart {
                 ForEach(Array(points.enumerated()), id: \.offset) { _, point in
@@ -282,11 +282,11 @@ struct Dashboard: View {
                     LineMark(x: .value(L("时间"), end), y: .value(L("预测"), min(100, window.usedPercent + rate * end.timeIntervalSince(model.now) / 3600)), series: .value(L("系列"), L("预测")))
                         .foregroundStyle(ink.blue).lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
                 }
-                RuleMark(y: .value(L("额度上限"), 100)).foregroundStyle(.white.opacity(0.16)).lineStyle(StrokeStyle(dash: [3, 4]))
-                RuleMark(x: .value(L("现在"), model.now)).foregroundStyle(.white.opacity(0.15)).annotation(position: .top, alignment: .leading) { Text(L("现在")).font(.system(size: 9)).foregroundStyle(ink.secondary) }
+                RuleMark(y: .value(L("额度上限"), 100)).foregroundStyle(.white.opacity(0.22)).lineStyle(StrokeStyle(dash: [3, 4]))
+                RuleMark(x: .value(L("现在"), model.now)).foregroundStyle(.white.opacity(0.24)).annotation(position: .top, alignment: .leading) { Text(L("现在")).font(.system(size: 9)).foregroundStyle(ink.secondary) }
             }.chartYScale(domain: 0...100).chartXScale(domain: start...max(end, model.now.addingTimeInterval(60)))
-                .chartYAxis { AxisMarks(values: [0, 25, 50, 75, 100]) { value in AxisGridLine().foregroundStyle(.white.opacity(0.04)); AxisValueLabel { if let n = value.as(Int.self) { Text("\(n)%").font(.system(size: 10, design: .monospaced)) } } } }
-                .chartXAxis { AxisMarks(values: .automatic(desiredCount: 6)) { _ in AxisValueLabel(format: model.horizonHours > 24 ? .dateTime.month().day() : .dateTime.hour().minute()).font(.system(size: 10, design: .monospaced)) } }
+                .chartYAxis { AxisMarks(values: [0, 25, 50, 75, 100]) { value in AxisGridLine().foregroundStyle(.white.opacity(0.075)); AxisValueLabel { if let n = value.as(Int.self) { Text("\(n)%").font(.system(size: 10, design: .monospaced)).foregroundStyle(ink.secondary) } } } }
+                .chartXAxis { AxisMarks(values: .automatic(desiredCount: 6)) { _ in AxisGridLine().foregroundStyle(.white.opacity(0.045)); AxisValueLabel(format: model.horizonHours > 24 ? .dateTime.month().day() : .dateTime.hour().minute()).font(.system(size: 10, design: .monospaced)).foregroundStyle(ink.secondary) } }
                 .frame(height: 185)
             HStack(spacing: 18) {
                 legend(L("实际采样"), color: ink.accent)

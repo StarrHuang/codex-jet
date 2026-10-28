@@ -1,3 +1,11 @@
+# Codex Jet 0.20.0 — Codex Usage & Tibo Reset Monitor
+
+Night-mode presentation has improved across the app, including chart grids, secondary text, legends, and reset countdown contrast. The mint clock and quota status colors retain their established meanings.
+
+During a temporary reset announcement, the popover presents a compact overview with the current quota, nearest reset deadline, and pace guidance. Supporting details remain expandable, while the quota-consumption curve stays visible by default. The display changes do not alter quota or history calculations.
+
+This release continues direct macOS distribution; it is not an App Store build.
+
 # Codex Jet 0.19.0 — Codex Usage & Tibo Reset Monitor
 
 Japanese and Korean interface catalogs join Simplified Chinese and English. The catalogs use machine-assisted translation with reviewed key terminology; individual wording may still need refinement.
