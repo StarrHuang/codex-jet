@@ -8,7 +8,7 @@ Check how much Codex quota remains, whether your current pace can last until the
 
 **English · [简体中文](README.zh-CN.md)** · [Download for macOS](https://github.com/StarrHuang/codex-jet/releases/latest) · [Install and update](docs/deployment.md) · [Verification](docs/verification.md)
 
-Requires macOS 14 or later and an installed, signed-in Codex CLI. Universal builds support Apple Silicon and Intel Macs. The interface supports Simplified Chinese, English, and following the macOS system language.
+Requires macOS 14 or later and an installed, signed-in Codex CLI. Universal builds support Apple Silicon and Intel Macs. The interface supports Simplified Chinese, English, Japanese, and Korean, with an option to follow the macOS system language.
 
 ## Codex usage tracking: quota, history, and token consumption
 
@@ -35,6 +35,7 @@ Looking for **Codex Tibo reset** updates? Codex Jet brings the third-party globa
 - Follow temporary reset announcements, available timing, source links, confidence, and update time.
 - See reset countdowns when the source provides an eligible future target, with source and time-conversion details.
 - Receive reset reminders and review the pace needed if you choose to use the current balance before a target.
+- Keep an actionable reminder window visible across desktops, with a prominent countdown and acknowledge or snooze controls.
 - View banked-reset card expiry and manual-redemption scenarios separately from weekly and temporary resets.
 
 **A global reset signal does not prove that your account has received more quota.** Untimed, stale, historical, or unverified signals retain those labels. Personal quota always comes from your authenticated account reading.

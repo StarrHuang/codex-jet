@@ -17,11 +17,12 @@ struct QuotaPopover: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
-                QuotaLogo().frame(width: 21, height: 21)
+                QuotaBrandBadge().frame(width: 26, height: 26)
                 Text("Codex Jet").font(.system(size: 15, weight: .semibold))
                 Spacer()
-                Text(L("额度驾驶舱")).font(.system(size: 10)).foregroundStyle(muted)
-                Button(action: openDashboard) { Image(systemName: "arrow.up.right.square") }.buttonStyle(.plain).help(L("打开完整驾驶舱"))
+                Text(L("额度驾驶舱")).font(.system(size: 12)).foregroundStyle(muted)
+                Button(action: openDashboard) { Image(systemName: "arrow.up.right.square").frame(width: 28, height: 28).contentShape(Rectangle()) }
+                    .buttonStyle(.plain).help(L("打开完整驾驶舱")).accessibilityLabel(L("打开完整驾驶舱"))
             }.padding(.horizontal, 20).padding(.vertical, 15)
             Divider().overlay(.white.opacity(0.06))
             ScrollView {
@@ -82,7 +83,7 @@ struct QuotaPopover: View {
                 Button(L("驾驶舱"), action: openDashboard)
                 Button(L("重置通知")) { model.page = "notifications"; openDashboard() }
                 Spacer()
-                Text(model.snapshot.map { L("更新 {{0}}", String(describing: clock($0.sampledAt))) } ?? L("尚无读数")).font(.system(size: 9, design: .monospaced)).foregroundStyle(muted)
+                Text(model.snapshot.map { L("更新 {{0}}", String(describing: clock($0.sampledAt))) } ?? L("尚无读数")).font(.system(size: 11, design: .monospaced)).foregroundStyle(muted)
                 Button(L("退出")) { NSApp.terminate(nil) }
             }.buttonStyle(.plain).font(.system(size: 11)).padding(.horizontal, 20).padding(.vertical, 14)
         }

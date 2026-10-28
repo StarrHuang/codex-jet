@@ -37,10 +37,11 @@ struct Dashboard: View {
     var sidebar: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 10) {
-                QuotaLogo().frame(width: 32, height: 32)
+                QuotaBrandBadge().frame(width: 36, height: 36)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("CODEX RESET").font(.system(size: 13, weight: .bold, design: .monospaced))
-                    Text(L("额度 · 节奏 · 重置")).font(.system(size: 9, design: .monospaced)).foregroundStyle(ink.secondary)
+                    Text("Codex Jet").font(.system(size: 15, weight: .semibold))
+                    Text(L("额度 · 节奏 · 重置")).font(.system(size: 11)).foregroundStyle(ink.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }.padding(.top, 15)
             VStack(spacing: 7) {
@@ -52,10 +53,11 @@ struct Dashboard: View {
             }
             if let snapshot = model.snapshot {
                 VStack(alignment: .leading, spacing: 10) {
-                    label("CURRENT ACCOUNT")
+                    label(L("当前账户"))
                     Text((snapshot.plan ?? L("套餐未知")).uppercased()).font(.system(size: 20, weight: .medium, design: .monospaced))
                     Text(L("账户 {{0}}", String(describing: snapshot.accountKey.prefix(8)))).font(.system(size: 11, design: .monospaced)).foregroundStyle(ink.secondary)
                     Text(L("本地 Codex CLI 登录账户")).font(.system(size: 11)).foregroundStyle(ink.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }.padding(16).frame(maxWidth: .infinity, alignment: .leading).background(ink.panel, in: RoundedRectangle(cornerRadius: 12))
             }
             Spacer()
@@ -64,7 +66,9 @@ struct Dashboard: View {
                 HStack { Circle().fill(model.menuRunwayLight.color).frame(width: 6, height: 6); Text(L("本机采样 · 每 5 分钟")).font(.system(size: 11)).fixedSize(horizontal: false, vertical: true) }
                 Text(L("额度历史只保存在这台 Mac\n窗口采用服务器返回的时间")).font(.system(size: 11)).foregroundStyle(ink.secondary).lineSpacing(5)
                     .fixedSize(horizontal: false, vertical: true)
-                Button(L("导出当前账户历史"), action: model.exportHistory).buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(ink.blue)
+                Button(action: model.exportHistory) {
+                    Text(L("导出当前账户历史")).fixedSize(horizontal: false, vertical: true)
+                }.buttonStyle(.plain).font(.system(size: 11)).foregroundStyle(ink.blue)
                 if let message = model.exportMessage { Text(L(message)).font(.system(size: 10)).foregroundStyle(ink.secondary) }
             }.padding(.bottom, 14)
         }.padding(18).frame(width: 200).background(Color.black.opacity(0.18))
@@ -370,7 +374,7 @@ struct Dashboard: View {
     func rateRow(_ title: String, _ rate: Double?, color: Color) -> some View { HStack { Text(title).font(.system(size: 12)).foregroundStyle(ink.secondary); Spacer(); Text(rate.map { String(format: "%.2f", $0) } ?? "—").font(.system(size: 18, design: .monospaced)).foregroundStyle(color) } }
     func legend(_ text: String, color: Color) -> some View { HStack(spacing: 6) { Capsule().fill(color).frame(width: 13, height: 3); Text(text).font(.system(size: 10)).foregroundStyle(ink.secondary) } }
     func errorBanner(_ text: String) -> some View { HStack(alignment: .top, spacing: 10) { Image(systemName: "exclamationmark.circle"); Text(L(text)).textSelection(.enabled) }.font(.system(size: 12)).foregroundStyle(Color.orange).padding(14).frame(maxWidth: .infinity, alignment: .leading).background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 10)) }
-    func label(_ text: String) -> some View { Text(text).font(.system(size: 9, weight: .medium, design: .monospaced)).tracking(1.5).foregroundStyle(ink.secondary) }
+    func label(_ text: String) -> some View { Text(text).font(.system(size: 11, weight: .medium)).foregroundStyle(ink.secondary) }
 }
 extension View { func card() -> some View { background(ink.panel, in: RoundedRectangle(cornerRadius: 12)).overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(0.055), lineWidth: 1)) } }
 func number(_ value: Double?) -> String { value.map { String(format: "%.0f", $0) } ?? "—" }

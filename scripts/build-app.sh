@@ -25,7 +25,7 @@ else
   cp "$native_bin/ResetApp" "$app_path/Contents/MacOS/CodexReset"
 fi
 rm -f "$app_path/Contents/Resources/roadster.png"
-cp Sources/ResetApp/Resources/en.json "$app_path/Contents/Resources/en.json"
+cp Sources/ResetApp/Resources/*.json "$app_path/Contents/Resources/"
 ./scripts/build-icon.sh "$app_path/Contents/Resources"
 cat > "$app_path/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -36,7 +36,7 @@ cat > "$app_path/Contents/Info.plist" <<PLIST
 <key>CFBundleDisplayName</key><string>Codex Jet</string>
 <key>CFBundleExecutable</key><string>CodexReset</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
-<key>CFBundleLocalizations</key><array><string>zh-Hans</string><string>en</string></array>
+<key>CFBundleLocalizations</key><array><string>zh-Hans</string><string>en</string><string>ja</string><string>ko</string></array>
 <key>CFBundleDevelopmentRegion</key><string>zh-Hans</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>$app_version</string>

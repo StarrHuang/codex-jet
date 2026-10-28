@@ -131,10 +131,10 @@ struct TemporaryResetBanner: View {
         }
     }
 
-    private func deadlineValue(at currentTime: Date) -> String {
+    func deadlineValue(at currentTime: Date) -> String {
         if advice.state == .stale { return L("来源数据过期") }
         if let deadline = advice.deadline, deadline > currentTime {
-            return ResetTimeDisplay.remaining(until: deadline, now: currentTime)
+            return L(ResetTimeDisplay.remaining(until: deadline, now: currentTime))
         }
         if advice.deadline != nil { return advice.state == .recent ? L("已确认") : L("窗口已过") }
         if advice.state == .recent { return L("已确认") }

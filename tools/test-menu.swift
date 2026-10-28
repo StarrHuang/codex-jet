@@ -148,6 +148,12 @@ import ResetCore
                 }
             }
             check(visible > 30, "native logo contains rendered artwork, not a blank image")
+            let lightImage = QuotaLogo.statusImage(light: light, colorScheme: .light)
+            check(lightImage.size == image.size, "appearance does not change status item geometry")
+            if light != .unknown {
+                check(lightImage.tiffRepresentation != image.tiffRepresentation,
+                      "light appearance receives darker legible state colors")
+            }
         }
         print("PASS: native logo, compact quota/day countdown, source ordering and freshness; full label ‘\(model.menuBarTitle)’ is \(Int(width))pt")
     }

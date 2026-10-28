@@ -1,8 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <title>Codex quota clock</title>
-  <g fill="none" stroke="#8CE9BE" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M99.9 25.8 A52.5 52.5 0 1 1 64 11.5" stroke-width="14"/>
-    <path d="M41 46 L64 64 L89.6 38.4" stroke-width="9.6"/>
+  <title>Codex Jet quota clock</title>
+  <g fill="none" stroke="#87E8B8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M106.689 36.909 A50.56 50.56 0 1 1 64 13.44" stroke-width="13.44"/>
+    <path d="M64 35.84 V64 H88.32" stroke-width="10.88"/>
   </g>
-  <circle cx="64" cy="64" r="6.7" fill="#8CE9BE"/>
 </svg>

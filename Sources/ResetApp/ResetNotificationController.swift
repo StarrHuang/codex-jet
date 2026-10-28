@@ -124,7 +124,7 @@ final class ResetNotificationController: NSObject, ObservableObject, UNUserNotif
         active = reminder
         showPanel(reminder)
         attentionRequest = NSApp.requestUserAttention(.informationalRequest)
-        NSApp.dockTile.badgeLabel = L("蹬")
+        NSApp.dockTile.badgeLabel = "1"
         let content = UNMutableNotificationContent()
         content.title = reminder.title
         content.body = reminder.detail
@@ -191,7 +191,7 @@ final class ResetNotificationController: NSObject, ObservableObject, UNUserNotif
         if panel == nil {
             let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 510, height: 360),
                                 styleMask: [.titled, .nonactivatingPanel], backing: .buffered, defer: false)
-            panel.title = L("Codex Jet · 常驻提醒")
+            panel.title = "Codex Jet · " + L("重置通知")
             panel.level = .floating
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             panel.hidesOnDeactivate = false
@@ -270,35 +270,45 @@ struct ResetReminderCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {
-            HStack {
-                Text(reminder.isTest ? L("通知功能测试") : L("重置将近 · 额度别浪费"))
-                    .font(.system(size: 11, weight: .bold, design: .monospaced)).foregroundStyle(.orange)
+            HStack(spacing: 10) {
+                QuotaBrandBadge().frame(width: 30, height: 30)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Codex Jet").font(.system(size: 13, weight: .semibold))
+                    Text(reminder.isTest ? L("通知功能测试") : L("重置通知"))
+                        .font(.system(size: 12)).foregroundStyle(ink.secondary)
+                }
                 Spacer()
-                Image(systemName: "bell.badge.fill").foregroundStyle(.orange).font(.title2)
+                Image(systemName: "bell.badge").foregroundStyle(.orange).font(.system(size: 18))
             }
-            HStack(spacing: 14) {
-                QuotaFlowView(remainingPercent: reminder.currentRemaining, ratePerHour: reminder.recentRate,
-                                   announced: !reminder.isTest, animated: kickoff, runwayLight: runwayLight)
-                    .frame(width: 108, height: 82)
-                Text(reminder.title).font(.system(size: 22, weight: .bold)).fixedSize(horizontal: false, vertical: true)
-            }
+            Text(reminder.title).font(.system(size: 22, weight: .semibold))
+                .fixedSize(horizontal: false, vertical: true)
             if let deadline = reminder.deadline {
                 TimelineView(.periodic(from: .now, by: 30)) { timeline in
-                    HStack(spacing: 8) {
-                        Image(systemName: "scope").foregroundStyle(.orange)
-                        Text(L("目标 · {{0}} 上海时间", String(describing: ResetReminder.dateText(deadline))))
-                        Spacer()
-                        Text(countdown(until: deadline, now: timeline.date))
-                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    HStack(spacing: 14) {
+                        QuotaFlowView(remainingPercent: reminder.currentRemaining, ratePerHour: reminder.recentRate,
+                                      announced: !reminder.isTest, animated: kickoff, runwayLight: runwayLight)
+                            .frame(width: 108, height: 72)
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(countdown(until: deadline, now: timeline.date))
+                                .font(.system(size: 22, weight: .semibold, design: .rounded))
+                                .monospacedDigit().foregroundStyle(.orange)
+                            Text(L("目标 · {{0}} 上海时间", String(describing: ResetReminder.dateText(deadline))))
+                                .font(.system(size: 12)).foregroundStyle(ink.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
-                    .font(.system(size: 11, weight: .medium))
-                    .padding(.horizontal, 11).padding(.vertical, 8)
-                    .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 6))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
                 }
+            } else {
+                QuotaFlowView(remainingPercent: reminder.currentRemaining, ratePerHour: reminder.recentRate,
+                              announced: !reminder.isTest, animated: kickoff, runwayLight: runwayLight)
+                    .frame(width: 108, height: 72)
             }
             if let paceSummary {
-                Text(paceSummary).font(.system(size: 11, weight: .medium, design: .monospaced))
-                    .foregroundStyle(Color(red: 0.65, green: 0.87, blue: 0.73))
+                Text(paceSummary).font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(reminder.isTest ? ink.secondary : runwayLight.color)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Text(reminder.detail).font(.system(size: 12)).foregroundStyle(.white.opacity(0.78))
@@ -311,13 +321,12 @@ struct ResetReminderCard: View {
                 Button(L("15 分钟后提醒"), action: snooze).buttonStyle(.bordered)
                 Spacer()
                 Button(L("我知道了"), action: acknowledge).buttonStyle(.bordered)
-            }.font(.system(size: 11))
+            }.font(.system(size: 12))
             Text(L("常驻显示，直到确认或稍后提醒；重置窗口失效后自动收起。"))
-                .font(.system(size: 9)).foregroundStyle(ink.secondary)
+                .font(.system(size: 11)).foregroundStyle(ink.secondary)
         }.padding(22).frame(width: 510, alignment: .leading)
-            .background(LinearGradient(colors: [Color(red: 0.14, green: 0.19, blue: 0.14), ink.background],
-                                       startPoint: .topLeading, endPoint: .bottomTrailing))
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(.orange.opacity(0.8), lineWidth: 2))
+            .background(ink.background)
+            .overlay(alignment: .top) { Rectangle().fill(.orange).frame(height: 3) }
             .foregroundStyle(.white).preferredColorScheme(.dark)
             .task(id: reminder.id) {
                 guard !reduceMotion else { kickoff = false; return }

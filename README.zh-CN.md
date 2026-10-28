@@ -6,7 +6,7 @@
 
 [English](README.md) · [下载 macOS 通用版](https://github.com/StarrHuang/codex-jet/releases/latest) · [安装与更新](docs/deployment.md) · [验证方法](docs/verification.md)
 
-需要 macOS 14+，并已安装、登录 Codex CLI。支持 Apple Silicon 和 Intel，界面可切换中文、英语或跟随系统。
+需要 macOS 14+，并已安装、登录 Codex CLI。支持 Apple Silicon 和 Intel，界面支持简体中文、英语、日语、韩语，也可跟随系统语言。
 
 ## Codex usage：额度监测、消耗曲线与 token 统计
 

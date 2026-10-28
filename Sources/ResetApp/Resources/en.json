@@ -31,7 +31,7 @@
   "6 小时": "6 hours",
   "7 天": "7 days",
   "7 天模型合计": "7-day model total",
-  "Codex Jet · 常驻提醒": "Codex Jet · Persistent Reminder",
+  "Codex Reset · 常驻提醒": "Codex Jet · Persistent Reminder",
   "Codex 周额度": "Codex weekly quota",
   "Codex 整体额度": "Codex total quota",
   "Codex 账户额度接口": "Codex quota API",
@@ -214,7 +214,6 @@
   "情景：临时重置在 {{0}} 到账；它会覆盖当时余量，但不消耗未兑换的卡。": "Scenario: temporary reset arrives at {{0}}; it replaces the remaining balance but does not consume unredeemed cards.",
   "想在目标前用尽，接下来约需 %.1f× 当前速度。": "To use it up before the target, you would need about %.1f× your current pace.",
   "想撑到目标，可放到约 %.2f× 当前速度。": "To last until the target, slow to about %.2f× your current pace.",
-  "想让系统通知也保留到手动关闭，可在 macOS 通知设置中将 Codex Jet 设为“持续”（部分系统称“提醒”），并开启声音。系统通知仍受专注模式与系统设置影响；常驻提醒窗独立显示。App 运行时每 5 分钟检查新公告，退出或休眠时不检查。": "To keep system notifications visible until manually dismissed, set Codex Jet alerts to “Persistent” (called “Alerts” on some systems) in macOS Notification Settings and enable sound. System notifications still depend on Focus and system settings; the persistent reminder window is independent. While the app runs, it checks for announcements every 5 minutes; it does not check while closed or asleep.",
   "我知道了": "Got it",
   "所选范围内尚未观测到额度变化。": "No quota changes observed in the selected range.",
   "所选范围内暂无采样。历史从本机首次记录开始，不回填过去数据。": "No samples in the selected range. History starts with the first local record; earlier data is not backfilled.",
@@ -610,5 +609,7 @@
   "若计划在目标前用尽，可加快至约 %.2f× 当前速度": "To use up the balance by the target, increase to about %.2f× the current pace",
   "若要撑到目标，建议放慢至约 %.2f× 当前速度": "To last until the target, slow down to about %.2f× the current pace",
   "上次记录的正常重置": "Last recorded normal reset",
-  "上次记录": "Last recorded"
+  "上次记录": "Last recorded",
+  "当前账户": "Current account",
+  "想让系统通知也保留到手动关闭，可在 macOS 通知设置中将 Codex Jet 设为“持续”（部分系统称“提醒”），并开启声音。系统通知仍受专注模式与系统设置影响；常驻提醒窗独立显示。App 运行时每 5 分钟检查新公告，退出或休眠时不检查。": "To keep system notifications visible until manually dismissed, set Codex Jet alerts to “Persistent” (called “Alerts” on some systems) in macOS Notification Settings and enable sound. System notifications still depend on Focus and system settings; the persistent reminder window is independent. While the app runs, it checks for announcements every 5 minutes; it does not check while closed or asleep."
 }

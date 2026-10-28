@@ -21,7 +21,7 @@ struct ResetNotificationSettings: View {
             }
             VStack(alignment: .leading, spacing: 12) {
                 Label(controller.permission, systemImage: "checkmark.shield")
-                Label(controller.delivery, systemImage: "paperplane")
+                Label(controller.delivery, systemImage: "bell")
                 if let error = controller.error { Text(L(error)).foregroundStyle(.orange).textSelection(.enabled) }
             }.font(.system(size: 12)).foregroundStyle(ink.secondary)
             HStack(spacing: 12) {
