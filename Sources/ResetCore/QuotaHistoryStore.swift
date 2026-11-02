@@ -25,13 +25,18 @@ public struct QuotaHistoryStore: Sendable {
         return snapshots.filter { $0.accountKey == accountKey }
     }
 
-    public func append(_ snapshot: QuotaSnapshot) throws {
+    @discardableResult
+    public func append(_ snapshot: QuotaSnapshot) throws -> [QuotaSnapshot] {
         let existing = try load()
-        let snapshots = existing + [snapshot]
+        // Keep the return value aligned with the date precision in the persisted JSON.
+        let snapshotData = try JSONEncoder.quotaEncoder.encode(snapshot)
+        let persistedSnapshot = try JSONDecoder.quotaDecoder.decode(QuotaSnapshot.self, from: snapshotData)
+        let snapshots = existing + [persistedSnapshot]
         let directory = fileURL.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let data = try JSONEncoder.quotaEncoder.encode(snapshots)
         try data.write(to: fileURL, options: .atomic)
+        return snapshots
     }
 }
 

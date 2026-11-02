@@ -206,9 +206,10 @@ final class AppModel: ObservableObject {
                     ?? live.windows.first?.id
             }
             failureStage = L("额度已读取，但历史保存失败")
-            let store = try QuotaHistoryStore()
-            try store.append(live)
-            history = try store.load(accountKey: live.accountKey)
+            // JSON 读写在后台执行；复用成功落盘的结果，避免再次读取整个文件。
+            history = try await Task.detached {
+                try QuotaHistoryStore().append(live).filter { $0.accountKey == live.accountKey }
+            }.value
             error = nil
             do { bankedResets = try await BankedResetReader().read(accountKey: live.accountKey); bankedError = nil }
             catch { bankedError = L("储备重置卡读取失败：{{0}}", String(describing: error.localizedDescription)) }

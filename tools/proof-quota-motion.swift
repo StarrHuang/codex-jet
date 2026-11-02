@@ -26,15 +26,39 @@ private struct MeterProof: View {
 }
 
 @main struct QuotaMotionProof {
-    @MainActor static func main() async throws {
+    @MainActor static func main() {
+        NSApplication.shared.setActivationPolicy(.accessory)
+        Task { @MainActor in
+            do { try await run(); exit(0) }
+            catch { fputs("Motion proof failed: \(error)\n", stderr); exit(1) }
+        }
+        NSApp.run()
+    }
+
+    @MainActor static func run() async throws {
         let output = URL(fileURLWithPath: CommandLine.arguments.dropFirst().first ?? "/tmp/quota-flow-proof")
         try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
-        NSApplication.shared.setActivationPolicy(.prohibited)
+        NSApplication.shared.setActivationPolicy(.accessory)
         let input = MeterInput()
         let host = NSHostingView(rootView: MeterProof(input: input))
         host.frame = NSRect(x: 0, y: 0, width: 560, height: 160)
         let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
         window.contentView = host
+        window.center()
+        window.level = .floating
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        defer { window.orderOut(nil) }
+
+        // 合成层动画不依赖 SwiftUI 重绘；直接核验真实 presentation layer 的姿态。
+        func handLayer(in view: NSView) -> CALayer? {
+            if view is QuotaClockHandView { return view.layer?.sublayers?.first }
+            return view.subviews.compactMap { handLayer(in: $0) }.first
+        }
+        func handAngle() -> Double {
+            let transform = handLayer(in: host)!.presentation()!.transform
+            return atan2(Double(transform.m12), Double(transform.m11))
+        }
 
         func isRunway(_ color: NSColor) -> Bool {
             let c = color.usingColorSpace(.deviceRGB)!
@@ -140,10 +164,18 @@ private struct MeterProof: View {
         input.rate = 60
         try await Task.sleep(for: .milliseconds(150))
         let handFirst = try capture("07-hand-moving")
+        let firstAngle = handAngle()
         try await Task.sleep(for: .milliseconds(350))
         let handNext = try capture("08-hand-moving-next")
-        precondition(handFirst.png != handNext.png && abs(handFirst.arcDegrees - handNext.arcDegrees) <= 2,
+        precondition(abs(firstAngle - handAngle()) > 0.03 && abs(handFirst.arcDegrees - handNext.arcDegrees) <= 2,
                      "positive measured pace moves the hand while the observed arc stays fixed")
+        let fastDuration = handLayer(in: host)!.animation(forKey: "quota-hand")!.duration
+        let beforeRateChange = handAngle()
+        input.rate = 1
+        try await Task.sleep(for: .milliseconds(100))
+        precondition(handLayer(in: host)!.animation(forKey: "quota-hand")!.duration > fastDuration,
+                     "lower measured consumption slows the actual compositor animation")
+        precondition(abs(handAngle() - beforeRateChange) < 0.08, "changing rate preserves the hand heading")
 
         input.phase = .inactive
         try await Task.sleep(for: .milliseconds(80))
@@ -151,7 +183,17 @@ private struct MeterProof: View {
         try await Task.sleep(for: .milliseconds(180))
         let inactiveNext = try capture("inactive-next")
         precondition(inactive.png == inactiveNext.png, "inactive views stop hand motion")
+        precondition(handLayer(in: host)?.animation(forKey: "quota-hand") == nil,
+                     "inactive views remove the continuous compositor animation")
         input.phase = .active
+        try await Task.sleep(for: .milliseconds(100))
+        precondition(handLayer(in: host)?.animation(forKey: "quota-hand") != nil, "active visible view resumes")
+        window.orderOut(nil)
+        try await Task.sleep(for: .milliseconds(100))
+        precondition(handLayer(in: host)?.animation(forKey: "quota-hand") == nil, "hidden window stops compositor animation")
+        window.orderFrontRegardless()
+        try await Task.sleep(for: .milliseconds(100))
+        precondition(handLayer(in: host)?.animation(forKey: "quota-hand") != nil, "visible window resumes compositor animation")
         input.rate = 0
         input.balance = 0
         try await Task.sleep(for: .milliseconds(550))

@@ -15,8 +15,6 @@ struct QuotaFlowView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var announcementStart: Date?
     @State private var announcementConsumed = false
-    @State private var handTurns = 0.0
-    @State private var handOrigin = Date()
 
     private var flow: QuotaFlowState {
         QuotaFlowState(remainingPercent: remainingPercent, stale: stale, ratePerHour: ratePerHour)
@@ -94,15 +92,7 @@ struct QuotaFlowView: View {
                 announcementStart = nil
             }
         }
-        .onChange(of: handSpeed) { oldSpeed, _ in
-            let now = Date()
-            if motionAllowed { handTurns += now.timeIntervalSince(handOrigin) * oldSpeed }
-            handOrigin = now
-        }
-        .onChange(of: motionAllowed) { wasAllowed, isAllowed in
-            let now = Date()
-            if wasAllowed { handTurns += now.timeIntervalSince(handOrigin) * handSpeed }
-            handOrigin = now
+        .onChange(of: motionAllowed) { _, isAllowed in
             if isAllowed { startAnnouncementIfNeeded() }
             else { announcementStart = nil }
         }
@@ -129,16 +119,8 @@ struct QuotaFlowView: View {
             ClockTicks().stroke(Color.primary.opacity(0.58), style: StrokeStyle(lineWidth: max(1, diameter * 0.025), lineCap: .round))
                 .padding(diameter * 0.08)
             if (flow.remainingPercent ?? 0) > 0 {
-                if handActive {
-                    TimelineView(.animation(minimumInterval: 1.0 / 24.0, paused: !handActive)) { timeline in
-                        let turns = handTurns + timeline.date.timeIntervalSince(handOrigin) * handSpeed
-                        ClockHand().stroke(Color.primary, style: StrokeStyle(lineWidth: max(1.2, diameter * 0.035), lineCap: .round))
-                            .rotationEffect(.degrees(turns.truncatingRemainder(dividingBy: 1) * 360))
-                    }
-                } else {
-                    ClockHand().stroke(Color.primary, style: StrokeStyle(lineWidth: max(1.2, diameter * 0.035), lineCap: .round))
-                        .rotationEffect(.degrees(handTurns.truncatingRemainder(dividingBy: 1) * 360))
-                }
+                QuotaClockHand(turnsPerSecond: handActive ? handSpeed : 0,
+                               lineWidth: max(1.2, diameter * 0.035))
             }
             if announced {
                 if let announcementStart, motionAllowed {
@@ -174,16 +156,6 @@ private struct ClockTicks: Shape {
             path.move(to: CGPoint(x: center.x + CGFloat(cos(angle)) * inner, y: center.y + CGFloat(sin(angle)) * inner))
             path.addLine(to: CGPoint(x: center.x + CGFloat(cos(angle)) * outer, y: center.y + CGFloat(sin(angle)) * outer))
         }
-        return path
-    }
-}
-
-private struct ClockHand: Shape {
-    func path(in rect: CGRect) -> Path {
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        var path = Path()
-        path.move(to: center)
-        path.addLine(to: CGPoint(x: center.x, y: rect.minY + min(rect.width, rect.height) * 0.18))
         return path
     }
 }

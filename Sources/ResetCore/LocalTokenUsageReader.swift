@@ -77,21 +77,30 @@ public actor LocalTokenUsageReader {
         for url in candidates.keys.sorted(by: { $0.path < $1.path }) {
             guard let metadata = candidates[url] else { continue }
             if let cached = fileCache[url], cached.metadata == metadata, cached.retainedFrom <= cutoff {
-                selected[url] = cached
+                selected[url] = cached.retainingRecords(from: cutoff)
             } else if let cached = fileCache[url], cached.metadata.identity == metadata.identity,
                       metadata.size > cached.metadata.size, cached.retainedFrom <= cutoff,
                       !cached.hasUnterminatedTail,
                       prefixMatches(url, offset: cached.readOffset, expectedTail: cached.boundaryTail) {
                 let appended = try parseFile(url, metadata: metadata, cutoff: cutoff, offset: cached.readOffset)
+                let earliestRecordAt: Date?
+                if let cachedEarliest = cached.earliestRecordAt,
+                   let appendedEarliest = appended.earliestRecordAt {
+                    earliestRecordAt = min(cachedEarliest, appendedEarliest)
+                } else {
+                    earliestRecordAt = cached.earliestRecordAt ?? appended.earliestRecordAt
+                }
                 selected[url] = CachedSessionFile(
                     metadata: metadata, retainedFrom: cached.retainedFrom,
                     modelsByTurn: merge(cached.modelsByTurn, appended.modelsByTurn),
                     records: cached.records + appended.records,
+                    earliestRecordAt: earliestRecordAt,
                     incompleteUsageCount: cached.incompleteUsageCount + appended.incompleteUsageCount,
                     malformedLineCount: cached.malformedLineCount + appended.malformedLineCount,
                     legacyTokenCount: cached.legacyTokenCount + appended.legacyTokenCount,
                     readOffset: appended.readOffset, boundaryTail: appended.boundaryTail,
                     hasUnterminatedTail: appended.hasUnterminatedTail)
+                    .retainingRecords(from: cutoff)
             } else {
                 let parsed = try parseFile(url, metadata: metadata, cutoff: cutoff, offset: 0)
                 fileCache[url] = parsed
@@ -177,6 +186,7 @@ public actor LocalTokenUsageReader {
         fallbackFormatter.formatOptions = [.withInternetDateTime]
         var modelsByTurn: [String: Set<String>] = [:]
         var records: [PendingUsage] = []
+        var earliestRecordAt: Date?
         var incompleteUsageCount = 0
         var malformedLineCount = 0
         var legacyTokenCount = 0
@@ -232,6 +242,7 @@ public actor LocalTokenUsageReader {
             guard timestamp >= cutoff else { return }
             records.append(PendingUsage(turnID: turnID, responseID: responseID,
                                         timestamp: timestamp, usage: usage))
+            earliestRecordAt = min(earliestRecordAt ?? timestamp, timestamp)
         }
 
         while true {
@@ -252,6 +263,7 @@ public actor LocalTokenUsageReader {
         let tail = lastCompleteLineTail(fileSize: readOffset, stream: stream)
         return CachedSessionFile(metadata: metadata, retainedFrom: cutoff,
                                  modelsByTurn: modelsByTurn, records: records,
+                                 earliestRecordAt: earliestRecordAt,
                                  incompleteUsageCount: incompleteUsageCount,
                                  malformedLineCount: malformedLineCount,
                                  legacyTokenCount: legacyTokenCount,
@@ -405,12 +417,42 @@ private struct CachedSessionFile {
     let retainedFrom: Date
     let modelsByTurn: [String: Set<String>]
     let records: [PendingUsage]
+    let earliestRecordAt: Date?
     let incompleteUsageCount: Int
     let malformedLineCount: Int
     let legacyTokenCount: Int
     let readOffset: Int64
     let boundaryTail: [UInt8]
     let hasUnterminatedTail: Bool
+
+    func retainingRecords(from cutoff: Date) -> CachedSessionFile {
+        guard cutoff > retainedFrom else { return self }
+        guard let earliestRecordAt, earliestRecordAt < cutoff else {
+            return CachedSessionFile(
+                metadata: metadata, retainedFrom: cutoff, modelsByTurn: modelsByTurn,
+                records: records, earliestRecordAt: earliestRecordAt,
+                incompleteUsageCount: incompleteUsageCount,
+                malformedLineCount: malformedLineCount,
+                legacyTokenCount: legacyTokenCount,
+                readOffset: readOffset, boundaryTail: boundaryTail,
+                hasUnterminatedTail: hasUnterminatedTail)
+        }
+        var retainedRecords: [PendingUsage] = []
+        retainedRecords.reserveCapacity(records.count)
+        var earliestRetainedRecordAt: Date?
+        for record in records where record.timestamp >= cutoff {
+            retainedRecords.append(record)
+            earliestRetainedRecordAt = min(earliestRetainedRecordAt ?? record.timestamp, record.timestamp)
+        }
+        return CachedSessionFile(
+            metadata: metadata, retainedFrom: cutoff, modelsByTurn: modelsByTurn,
+            records: retainedRecords, earliestRecordAt: earliestRetainedRecordAt,
+            incompleteUsageCount: incompleteUsageCount,
+            malformedLineCount: malformedLineCount,
+            legacyTokenCount: legacyTokenCount,
+            readOffset: readOffset, boundaryTail: boundaryTail,
+            hasUnterminatedTail: hasUnterminatedTail)
+    }
 }
 
 private struct FileMetadata: Equatable {

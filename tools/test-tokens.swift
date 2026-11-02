@@ -13,9 +13,11 @@ struct LocalTokenUsageTests {
         let incrementalFile = sessions.appendingPathComponent("2026/10/02/incremental.jsonl")
         let archiveFile = archives.appendingPathComponent("rollout-2026-10-12T00-00-00-copy.jsonl")
         let legacyFile = sessions.appendingPathComponent("2026/09/01/legacy.jsonl")
+        let lateContextFile = sessions.appendingPathComponent("2026/10/03/late-context.jsonl")
         try FileManager.default.createDirectory(at: activeFile.deletingLastPathComponent(), withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: archiveFile.deletingLastPathComponent(), withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: legacyFile.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: lateContextFile.deletingLastPathComponent(), withIntermediateDirectories: true)
 
         let now = date("2026-10-13T04:30:00Z")
         try FileManager.default.createDirectory(at: incrementalFile.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -62,15 +64,19 @@ struct LocalTokenUsageTests {
                   input: 10, cached: 2, cacheWrite: 1, output: 5, reasoning: 2),
         ], to: archiveFile)
         try writeLines([event("token_count")], to: legacyFile)
-        for file in [activeFile, incrementalFile, legacyFile] {
+        try writeLines([
+            usage("late-turn", response: "late-context-initial", at: "2026-10-12T12:25:00Z",
+                  input: 5, cached: 1, cacheWrite: 0, output: 2, reasoning: 0),
+        ], to: lateContextFile)
+        for file in [activeFile, incrementalFile, legacyFile, lateContextFile] {
             try FileManager.default.setAttributes([.modificationDate: now], ofItemAtPath: file.path)
         }
 
         let reader = LocalTokenUsageReader(sessionsRoot: sessions, archivedSessionsRoot: archives)
         let first = try await reader.read(now: now)
-        try expect(first.filesRead == 4, "active older session and recent archive files are discovered")
-        try expect(first.rows.reduce(0) { $0 + $1.eventCount } == 9, "duplicate, cutoff, future, and incomplete records are handled")
-        try expect(first.rows.reduce(Int64(0)) { $0 + $1.totalTokens } == 233, "usage counters are additive without cumulative snapshots")
+        try expect(first.filesRead == 5, "active older session and recent archive files are discovered")
+        try expect(first.rows.reduce(0) { $0 + $1.eventCount } == 10, "duplicate, cutoff, future, and incomplete records are handled")
+        try expect(first.rows.reduce(Int64(0)) { $0 + $1.totalTokens } == 240, "usage counters are additive without cumulative snapshots")
         try expect(first.warnings.contains { $0.contains("重复的响应记录") }, "copied response IDs are deduplicated")
         try expect(first.warnings.contains { $0.contains("未知模型") }, "missing and ambiguous models are labeled")
         try expect(first.warnings.contains { $0.contains("计数器不完整") }, "incomplete usage is reported")
@@ -96,22 +102,43 @@ struct LocalTokenUsageTests {
         let second = try await reader.read(now: now)
         try expect(second.rows == first.rows, "repeated refresh does not add cached records twice")
 
+        try appendLine(turn("late-turn", model: "Late"), to: lateContextFile)
+        try FileManager.default.setAttributes([.modificationDate: now.addingTimeInterval(3)], ofItemAtPath: lateContextFile.path)
+        let contextArrived = try await reader.read(now: now)
+        let lateContextRow = try row(contextArrived, hour: "2026-10-12T12:00:00Z", model: "Late")
+        try expect(lateContextRow.eventCount == 1 && lateContextRow.totalTokens == 7,
+                   "a turn context appended after its usage record resolves the cached record")
+
         try appendRaw("\n", to: activeFile)
         try FileManager.default.setAttributes([.modificationDate: now.addingTimeInterval(1)], ofItemAtPath: activeFile.path)
         let terminatedTail = try await reader.read(now: now)
-        try expect(terminatedTail.rows == first.rows, "a valid EOF record is not double-counted when its newline arrives")
+        try expect(terminatedTail.rows == contextArrived.rows, "a valid EOF record is not double-counted when its newline arrives")
 
         let afterFutureEvent = try await reader.read(now: now.addingTimeInterval(60))
         let afterFutureTotal = afterFutureEvent.rows.reduce(Int64(0)) { $0 + $1.totalTokens }
-        try expect(afterFutureTotal == 996,
+        try expect(afterFutureTotal == 1003,
                    "a cached future-dated record appears when the clock reaches it (total \(afterFutureTotal))")
 
         try appendLine(usage("epsilon-turn", response: "new-after-refresh", at: "2026-10-13T03:10:00Z",
                              input: 20, cached: 5, cacheWrite: 0, output: 5, reasoning: 2), to: incrementalFile)
         try FileManager.default.setAttributes([.modificationDate: now.addingTimeInterval(2)], ofItemAtPath: incrementalFile.path)
         let refreshed = try await reader.read(now: now.addingTimeInterval(60))
-        try expect(refreshed.rows.reduce(Int64(0)) { $0 + $1.totalTokens } == 1021,
+        try expect(refreshed.rows.reduce(Int64(0)) { $0 + $1.totalTokens } == 1028,
                    "a changed active file refreshes without replaying stale counters")
+
+        let laterNow = now.addingTimeInterval(9 * 24 * 60 * 60)
+        try appendLine(usage("late-turn", response: "late-turn-new-window", at: "2026-10-22T04:00:00Z",
+                             input: 4, cached: 1, cacheWrite: 0, output: 2, reasoning: 0), to: lateContextFile)
+        try FileManager.default.setAttributes([.modificationDate: laterNow], ofItemAtPath: lateContextFile.path)
+        let afterWindowRolls = try await reader.read(now: laterNow)
+        try expect(afterWindowRolls.rows.count == 1, "records outside the rolling window leave the retained usage set")
+        let retainedTurnContext = try row(afterWindowRolls, hour: "2026-10-22T04:00:00Z", model: "Late")
+        try expect(retainedTurnContext.eventCount == 1 && retainedTurnContext.totalTokens == 6,
+                   "pruning expired usage preserves model context for a later record in the same turn")
+        let rewound = try await reader.read(now: now.addingTimeInterval(60))
+        try expect(rewound.rows == refreshed.rows, "moving the clock backward reparses records removed by compaction")
+        let advancedAgain = try await reader.read(now: laterNow)
+        try expect(advancedAgain.rows == afterWindowRolls.rows, "advancing again after a rewind preserves the rolling report")
         print("Local token usage tests passed")
     }
 

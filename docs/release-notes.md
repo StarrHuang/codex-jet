@@ -1,3 +1,17 @@
+# Codex Jet 0.20.1 — Codex Usage & Tibo Reset Monitor
+
+- 时钟指针改用 Core Animation 合成层，保留实测速度映射；不可见、停用及减少动态效果时停止旋转。
+- 历史 JSON 保存移至后台，复用保存结果，避免刷新后再次完整读取。保留全部历史、账户隔离和原子写入。
+- token 缓存随七天统计窗口清理过期记录，保留模型上下文、未来记录与错误提示。曲线、提醒、采样周期和四种语言保持兼容。
+- 新增可复现的性能采样与合成基准。详细结果和测量口径见 `docs/performance-2026-11-02.md`。
+
+English
+
+- Rotate the quota-clock hand with Core Animation while preserving the measured-pace mapping; stop rotation when hidden, inactive, or Reduce Motion is enabled.
+- Move history JSON I/O off the main actor and reuse the persisted result, eliminating a second full-file read per refresh. Preserve complete history, account isolation, and atomic writes.
+- Prune expired usage records from the rolling seven-day token cache while retaining model context, future records, and warnings. Keep charts, reminders, polling intervals, and all four languages.
+- Add repeatable process sampling and synthetic benchmarks. See `docs/performance-2026-11-02.md` for results and measurement definitions.
+
 # Codex Jet 0.20.0 — Codex Usage & Tibo Reset Monitor
 
 Night-mode presentation has improved across the app, including chart grids, secondary text, legends, and reset countdown contrast. The mint clock and quota status colors retain their established meanings.
